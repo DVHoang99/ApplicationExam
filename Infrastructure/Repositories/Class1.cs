@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Infrastructure.Persistence.Repositories
+namespace Infrastructure.Repositories
 {
     internal class Class1
     {
