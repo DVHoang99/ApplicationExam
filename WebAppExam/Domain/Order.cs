@@ -2,7 +2,7 @@
 {
     public class Order : EntityBase
     {
-        public string CustomerId { get; set; } = string.Empty;
+        public Guid CustomerId { get; set; } = Guid.Empty;
         public OrderStatus Status { get; set; }
         public Guid PaymentId { get; set; }
         public Customer Customer { get; set; }

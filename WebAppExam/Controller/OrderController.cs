@@ -18,11 +18,18 @@ namespace WebAppExam.Controller
             return Ok(new { orderId });
         }
 
-        [HttpPost]
-        public async Task<IActionResult> AddProduct([FromBody] CreateOrderCommand command)
-        {
-            var orderId = await _mediator.Send(command);
-            return Ok(new { orderId });
-        }
+        //[HttpPost]
+        //public async Task<IActionResult> AddProduct([FromBody] CreateOrderCommand command)
+        //{
+        //    var orderId = await _mediator.Send(command);
+        //    return Ok(new { orderId });
+        //}
+
+        //[HttpGet("{id}")]
+        //public async Task<IActionResult> AddProduct([FromQuery] string orderId)
+        //{
+        //    var order = await _mediator.Send(command);
+        //    return Ok(new { orderId });
+        //}
     }
 }

@@ -1,6 +1,6 @@
 ﻿using WebAppExam.Domain;
 
-namespace WebAppExam.Application.Inventory.Queries.GetInventoryQuery
+namespace WebAppExam.Domain.ViewModels
 {
     public class GetInventoryViewModel
     {

@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
+using WebAppExam.Domain.ViewModels;
 using WebAppExam.Infra;
 
 namespace WebAppExam.Application.Inventory.Queries.GetInventoryQuery
@@ -41,7 +42,7 @@ namespace WebAppExam.Application.Inventory.Queries.GetInventoryQuery
             return new GetinventoryViewModelWapper
             {
                 Total = total,
-                Data = products.Select(GetInventoryViewModel.FromResult).ToList(),
+                Data = [.. products.Select(GetInventoryViewModel.FromResult)],
             };
         }
     }

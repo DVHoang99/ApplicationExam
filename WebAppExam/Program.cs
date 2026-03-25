@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using StackExchange.Redis;
 using WebAppExam.Application.Events;
+using WebAppExam.Application.Middleware;
 using WebAppExam.Domain;
 using WebAppExam.Infra;
 using WebAppExam.Infra.Behaviors;
@@ -84,9 +85,31 @@ public partial class Program
         //    });
         //});
 
+        builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
         builder.Services.AddScoped<ICacheLockService, RedisLockService>();
 
+        builder.Services.AddMassTransit(x =>
+        {
+            x.UsingInMemory((context, cfg) =>
+            {
+                cfg.ConfigureEndpoints(context);
+            });
+
+            x.AddRider(rider =>
+            {
+                rider.AddProducer<WebAppExam.Application.Events.OrderCreatedEvent>("order-created-topic");
+
+                rider.UsingKafka((context, k) =>
+                {
+                    var kafkaHost = "localhost:9092";
+                    k.Host(kafkaHost);
+                });
+            });
+        });
+
         var app = builder.Build();
+        app.UseMiddleware<AuditLogMiddleware>();
         //app.UseHangfireDashboard("/hangfire");
         app.MapControllers();
         app.Run();

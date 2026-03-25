@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <RootNamespace>WebAppExam.LogConsumer</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+</Project>
