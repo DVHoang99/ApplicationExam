@@ -2,9 +2,8 @@
 {
     public class Order : EntityBase
     {
-        public Guid CustomerId { get; set; } = Guid.Empty;
+        public Ulid CustomerId { get; set; } = Ulid.Empty;
         public OrderStatus Status { get; set; }
-        public Guid PaymentId { get; set; }
         public Customer Customer { get; set; }
     }
 
