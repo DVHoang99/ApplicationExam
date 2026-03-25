@@ -28,7 +28,8 @@ namespace WebAppExam.Infrastructure.Persistence.Configurations
                     v => v.ToString(),
                     v => Ulid.Parse(v)
                 )
-                .IsRequired();
+                .IsRequired()
+                .HasMaxLength(26);
 
             builder.HasOne(x => x.Customer)
                 .WithMany()

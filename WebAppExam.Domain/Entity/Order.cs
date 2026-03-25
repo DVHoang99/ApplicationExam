@@ -5,6 +5,7 @@
         public Ulid CustomerId { get; set; } = Ulid.Empty;
         public OrderStatus Status { get; set; }
         public Customer Customer { get; set; }
+        public List<OrderDetail> Details { get; set; } = new();
     }
 
     public enum OrderStatus
