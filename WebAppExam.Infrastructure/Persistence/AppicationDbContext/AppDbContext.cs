@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using WebAppExam.Domain;
+using WebAppExam.Domain.Entity;
 
 namespace WebAppExam.Infrastructure.Persistence.AppicationDbContext
 {
@@ -11,9 +12,9 @@ namespace WebAppExam.Infrastructure.Persistence.AppicationDbContext
         }
 
         public DbSet<Order> Orders => Set<Order>();
-        public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
         public DbSet<Product> Products => Set<Product>();
         public DbSet<Customer> Customers => Set<Customer>();
+        public DbSet<MonthlyRevenue> MonthlyRevenues { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

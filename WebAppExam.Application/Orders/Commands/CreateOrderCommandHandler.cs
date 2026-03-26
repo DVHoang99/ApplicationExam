@@ -1,5 +1,8 @@
 using System;
+using KafkaFlow.Producers;
 using MediatR;
+using WebAppExam.Application.Features.Orders.Events;
+using WebAppExam.Application.Orders.Events;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Repository;
 using WebAppExam.Infrastructure.UnitOfWork;
@@ -10,13 +13,17 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Uli
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IProductRepository _productRepository;
+    private readonly IProducerAccessor _producerAccessor;
+
 
     public CreateOrderCommandHandler(
         IOrderRepository orderRepository,
-        IProductRepository productRepository)
+        IProductRepository productRepository,
+        IProducerAccessor producerAccessor)
     {
         _orderRepository = orderRepository;
         _productRepository = productRepository;
+        _producerAccessor = producerAccessor;
     }
 
     public async Task<Ulid> Handle(CreateOrderCommand request, CancellationToken ct)
@@ -42,6 +49,12 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Uli
 
         await _orderRepository.AddAsync(order, ct);
 
+        var producer = _producerAccessor.GetProducer("order-events-producer");
+        
+        await producer.ProduceAsync(
+            order.Id.ToString(), 
+            new OrderCreatedIntegrationEvent(order.Id, order.TotalAmount, DateTime.UtcNow)
+        );
         return order.Id;
     }
 }
