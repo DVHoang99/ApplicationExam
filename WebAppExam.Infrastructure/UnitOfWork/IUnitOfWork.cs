@@ -10,6 +10,8 @@ public interface IUnitOfWork : IAsyncDisposable
     IProductRepository Products { get; }
     IOrderRepository Orders { get; }
     IInventoryRepository Inventory { get; }
+    ICustomerRepository Customers { get; }
+
 
     Task BeginTransactionAsync();
     Task CommitAsync();
@@ -25,6 +27,7 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
     private IProductRepository? _products;
     private IOrderRepository? _orders;
     private IInventoryRepository? _inventory;
+    private ICustomerRepository? _customers;
 
     public UnitOfWork(AppDbContext context)
     {
@@ -34,6 +37,8 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
     public IProductRepository Products => _products ??= new ProductRepository(_context);
     public IOrderRepository Orders => _orders ??= new OrderRepository(_context);
     public IInventoryRepository Inventory => _inventory ??= new InventoryRepository(_context);
+    public ICustomerRepository Customers => _customers ??= new CustomerRepository(_context);
+
 
     public async Task BeginTransactionAsync()
     {

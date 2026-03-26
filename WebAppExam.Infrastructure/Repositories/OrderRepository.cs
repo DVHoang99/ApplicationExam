@@ -17,7 +17,7 @@ public class OrderRepository : Repository<Order>, IOrderRepository
             .Where(x => x.CustomerId == customerId)
             .ToListAsync();
     }
-    
+
     public async Task AddAsync(Order entity)
     {
         await _context.Orders.AddAsync(entity);

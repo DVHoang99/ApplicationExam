@@ -18,12 +18,14 @@ public class Repository<T> : IRepository<T> where T : class
 
     public async Task<T?> GetByIdAsync(Ulid id, CancellationToken cancellationToken = default)
     {
-        return await _dbSet.FindAsync(new object[] { id.ToString() }, cancellationToken);
+        return await _dbSet.FirstOrDefaultAsync(x =>
+            EF.Property<Ulid>(x, "Id") == id &&
+            EF.Property<DateTime?>(x, "DeletedAt") == null, cancellationToken);
     }
 
     public async Task<List<T>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        return await _dbSet.ToListAsync(cancellationToken);
+        return await _dbSet.Where(x => EF.Property<DateTime?>(x, "DeletedAt") == null).ToListAsync(cancellationToken);
     }
 
     public async Task<List<T>> FindAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
