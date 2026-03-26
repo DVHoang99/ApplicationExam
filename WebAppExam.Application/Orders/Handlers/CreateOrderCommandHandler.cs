@@ -1,5 +1,4 @@
 using MediatR;
-using WebAppExam.Application.Common.Interfaces;
 using WebAppExam.Application.Orders.Commands;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Repository;
@@ -38,13 +37,10 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Uli
         {
             var product = await _productRepo.GetByIdAsync(item.ProductId);
 
-            var lineTotal = product.Price * item.Quantity;
-
             order.Details.Add(new OrderDetail
             {
                 ProductId = product.Id,
                 Quantity = item.Quantity,
-                Price = product.Price,
                 Discount = item.Discount
             });
 

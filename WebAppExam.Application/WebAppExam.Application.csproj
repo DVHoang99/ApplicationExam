@@ -17,4 +17,10 @@
     <ProjectReference Include="..\WebAppExam.Infrastructure\WebAppExam.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Customers\" />
+    <Folder Include="Inventory\" />
+    <Folder Include="Products\" />
+  </ItemGroup>
+
 </Project>

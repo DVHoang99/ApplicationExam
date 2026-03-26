@@ -18,7 +18,7 @@ namespace WebAppExam.Infrastructure.Persistence.Configurations
                     v => v.ToString(),       
                     v => Ulid.Parse(v)         
                 )
-                .HasMaxLength(26);
+                .HasMaxLength(40);
             builder.Property(x => x.Status)
                 .HasConversion<int>()
                 .IsRequired();
@@ -29,7 +29,7 @@ namespace WebAppExam.Infrastructure.Persistence.Configurations
                     v => Ulid.Parse(v)
                 )
                 .IsRequired()
-                .HasMaxLength(26);
+                .HasMaxLength(40);
 
             builder.HasOne(x => x.Customer)
                 .WithMany()

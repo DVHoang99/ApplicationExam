@@ -51,21 +51,6 @@ public class ProductRepository : Repository<Product>, IProductRepository
             .Where(x => x.Name.Contains(keyword))
             .ToListAsync();
     }
-
-    public async Task<List<Product>> GetAvailableProductsAsync()
-    {
-        return await _context.Products
-            .Where(x => x.Stock > 0)
-            .ToListAsync();
-    }
-
-    public async Task<bool> IsInStockAsync(Ulid productId, int quantity)
-    {
-        return await _context.Products
-            .Where(x => x.Id == productId)
-            .AnyAsync(x => x.Stock >= quantity);
-    }
-
     public async Task<bool> ExistsAsync(Ulid id, CancellationToken cancellationToken = default)
     {
         return await _context.Products.AnyAsync(x => x.Id == id, cancellationToken);
