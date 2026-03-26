@@ -9,7 +9,7 @@ public class ProductRepository : Repository<Product>, IProductRepository
 {
     public ProductRepository(AppDbContext context) : base(context)
     {
-        
+
     }
 
     public async Task AddAsync(Product product, CancellationToken cancellationToken = default)
@@ -54,5 +54,14 @@ public class ProductRepository : Repository<Product>, IProductRepository
     public async Task<bool> ExistsAsync(Ulid id, CancellationToken cancellationToken = default)
     {
         return await _context.Products.AnyAsync(x => x.Id == id, cancellationToken);
+    }
+
+    public async Task<Dictionary<Ulid, Product>> GetProductByIdsAsync(List<Ulid> ids, CancellationToken cancellationToken = default)
+    {
+        return await _context.Products.Include
+        (p => p.Inventories)
+            .Where(x => ids.Contains(x.Id) &&
+            x.DeletedAt == null)
+            .ToDictionaryAsync(x => x.Id, x => x, cancellationToken);
     }
 }

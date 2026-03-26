@@ -23,27 +23,28 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Uli
 
     public async Task<Ulid> Handle(CreateOrderCommand request, CancellationToken ct)
     {
-        var order = new Order
-        {
-            CustomerId = request.CustomerId,
-            Status = OrderStatus.Pending
-        };
+        var customerExists = await _uow.Customers.GetByIdAsync(request.CustomerId, ct);
 
-        decimal total = 0;
-        int qty = 0;
+        if (customerExists == null)
+            throw new KeyNotFoundException("Customer not found.");
+
+        var order = new Order(request.CustomerId);
+
+        var products = await _uow.Products.GetProductByIdsAsync(request.Items.Select(x => x.ProductId).ToList(), ct);
 
         foreach (var item in request.Items)
         {
-            var product = await _uow.Products.GetByIdAsync(item.ProductId);
+            if (!products.ContainsKey(item.ProductId))
+                continue;
 
-            order.Details.Add(new OrderDetail
-            {
-                ProductId = product.Id,
-                Quantity = item.Quantity,
-                Discount = item.Discount
-            });
+            var product = products[item.ProductId];
+
+            var price = product.Inventories.FirstOrDefault() == null
+                ? 0
+                : product.Inventories.FirstOrDefault().Price;
+
+            order.AddOrUpdateItem(item.ProductId, price, item.Quantity);
         }
-
 
         await _uow.Orders.AddAsync(order, ct);
 

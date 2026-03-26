@@ -1,5 +1,6 @@
 ﻿namespace WebAppExam.Domain
 {
+    public interface IAggregateRoot { }
     public class EntityBase
     {
         public Ulid Id { get; set; } = Ulid.NewUlid();

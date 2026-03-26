@@ -15,8 +15,8 @@ namespace WebAppExam.Infrastructure.Persistence.Configurations
             builder.Property(x => x.Id)
                 .IsRequired()
                 .HasConversion(
-                    v => v.ToString(),       
-                    v => Ulid.Parse(v)         
+                    v => v.ToString(),
+                    v => Ulid.Parse(v)
                 )
                 .HasMaxLength(40);
             builder.Property(x => x.Status)
@@ -30,11 +30,6 @@ namespace WebAppExam.Infrastructure.Persistence.Configurations
                 )
                 .IsRequired()
                 .HasMaxLength(40);
-
-            builder.HasOne(x => x.Customer)
-                .WithMany()
-                .HasForeignKey(x => x.CustomerId)
-                .OnDelete(DeleteBehavior.Restrict);
 
             builder.Property(x => x.CreatedAt)
                 .IsRequired();

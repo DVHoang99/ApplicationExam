@@ -9,7 +9,7 @@ public class OrderDetailConfiguration : IEntityTypeConfiguration<OrderDetail>
     public void Configure(EntityTypeBuilder<OrderDetail> builder)
     {
         builder.ToTable("order_details");
-        
+
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.Id)
@@ -19,11 +19,6 @@ public class OrderDetailConfiguration : IEntityTypeConfiguration<OrderDetail>
             )
             .IsRequired()
             .HasMaxLength(26);
-
-        builder.HasOne<Order>()
-            .WithMany(o => o.Details)
-            .HasForeignKey(x => x.OrderId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         builder.Property(x => x.ProductId)
             .HasConversion(
