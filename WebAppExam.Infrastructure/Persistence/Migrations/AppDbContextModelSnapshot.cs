@@ -72,9 +72,6 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("Price")
-                        .HasColumnType("integer");
-
                     b.Property<string>("ProductId")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -114,6 +111,9 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<int>("TotalAmount")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -136,19 +136,13 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<decimal>("Discount")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
-                        .HasDefaultValue(0m);
-
                     b.Property<string>("OrderId")
                         .IsRequired()
                         .HasColumnType("character varying(40)");
 
-                    b.Property<decimal>("Price")
+                    b.Property<int>("Price")
                         .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
+                        .HasColumnType("integer");
 
                     b.Property<string>("ProductId")
                         .IsRequired()
@@ -187,38 +181,31 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.Property<string>("InventoryId")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<int>("Price")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("InventoryId")
-                        .IsUnique();
-
                     b.HasIndex("Name");
 
                     b.ToTable("products", (string)null);
                 });
 
-            modelBuilder.Entity("WebAppExam.Domain.Order", b =>
+            modelBuilder.Entity("WebAppExam.Domain.Entity.Inventory", b =>
                 {
-                    b.HasOne("WebAppExam.Domain.Customer", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                    b.HasOne("WebAppExam.Domain.Product", null)
+                        .WithMany("Inventories")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Customer");
                 });
 
             modelBuilder.Entity("WebAppExam.Domain.OrderDetail", b =>
@@ -230,26 +217,14 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("WebAppExam.Domain.Product", b =>
-                {
-                    b.HasOne("WebAppExam.Domain.Entity.Inventory", "Inventory")
-                        .WithOne("Product")
-                        .HasForeignKey("WebAppExam.Domain.Product", "InventoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Inventory");
-                });
-
-            modelBuilder.Entity("WebAppExam.Domain.Entity.Inventory", b =>
-                {
-                    b.Navigation("Product")
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("WebAppExam.Domain.Order", b =>
                 {
                     b.Navigation("Details");
+                });
+
+            modelBuilder.Entity("WebAppExam.Domain.Product", b =>
+                {
+                    b.Navigation("Inventories");
                 });
 #pragma warning restore 612, 618
         }

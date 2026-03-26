@@ -15,17 +15,17 @@ public class GetAllCustomerQuery(string phoneNumber, string customerName) : IReq
 
 public class GetAllCustomerQueryHandler : IRequestHandler<GetAllCustomerQuery, List<CustomerDTO>>
 {
-    private readonly IUnitOfWork _uow;
+    private readonly ICustomerRepository _customerRepository;
 
-    public GetAllCustomerQueryHandler(
-        IUnitOfWork uow)
+    public GetAllCustomerQueryHandler(ICustomerRepository customerRepository)
     {
-        _uow = uow;
+        _customerRepository = customerRepository;
     }
+
 
     public async Task<List<CustomerDTO>> Handle(GetAllCustomerQuery request, CancellationToken ct)
     {
-        var query = _uow.Customers.Query().Where(x => x.DeletedAt == null);
+        var query = _customerRepository.Query().Where(x => x.DeletedAt == null);
 
         if (!string.IsNullOrWhiteSpace(request.CustomerName))
         {

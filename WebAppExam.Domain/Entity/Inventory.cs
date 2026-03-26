@@ -5,17 +5,14 @@ namespace WebAppExam.Domain.Entity;
 public class Inventory : EntityBase
 {
     public Ulid ProductId { get; set; }
-    public int Price { get; set; }
     public int Stock { get; set; }
 
+    protected Inventory()
+    {
+    }
     internal void UpdateStock(int additionalStock)
     {
         Stock += additionalStock;
-    }
-
-    internal void UpdatePrice(int newPrice)
-    {
-        Price = newPrice;
     }
 
     internal Inventory(Ulid productId, int price, int stock)
@@ -24,9 +21,12 @@ public class Inventory : EntityBase
 
         Id = Ulid.NewUlid();
         ProductId = productId;
-        Price = price;
         Stock = stock;
+        CreatedAt = DateTime.UtcNow;
     }
 
-
+    internal void DeleteInventory()
+    {
+        DeletedAt = DateTime.UtcNow;
+    }
 }

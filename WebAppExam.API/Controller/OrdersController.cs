@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using WebAppExam.Application.Orders.Commands;
+using WebAppExam.Application.Orders.DTOs;
 
 namespace WebAppExam.API.Controller;
 
@@ -16,8 +17,17 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(CreateOrderCommand command)
+    public async Task<IActionResult> Create([FromBody] OrderDto input)
     {
+        var command = new CreateOrderCommand
+        {
+            CustomerId = input.CustomerId,
+            Items = input.Details.Select(x => new OrderItemDto
+            {
+                ProductId = x.ProductId,
+                Quantity = x.Quantity
+            }).ToList()
+        };
         var id = await _mediator.Send(command);
         return Ok(id);
     }

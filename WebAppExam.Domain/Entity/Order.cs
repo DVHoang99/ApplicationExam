@@ -1,8 +1,11 @@
-﻿namespace WebAppExam.Domain
+﻿using WebAppExam.Domain.Enum;
+
+namespace WebAppExam.Domain
 {
     public class Order : EntityBase, IAggregateRoot
     {
         public Ulid CustomerId { get; set; }
+        public int TotalAmount { get; set; }
         public OrderStatus Status { get; set; }
         private readonly List<OrderDetail> _details = new();
         public IReadOnlyCollection<OrderDetail> Details => _details.AsReadOnly();
@@ -17,10 +20,10 @@
             Status = OrderStatus.Pending;
         }
 
-        public void AddOrUpdateItem(Ulid productId, decimal unitPrice, int quantity)
+        public void AddOrUpdateItem(Ulid productId, int unitPrice, int quantity)
         {
             var existingItem = _details.SingleOrDefault(x => x.ProductId == productId);
-            
+
             if (existingItem != null)
             {
                 existingItem.UpdateQuantity(quantity);
@@ -39,13 +42,9 @@
                 _details.Remove(item);
             }
         }
-    }
-
-    public enum OrderStatus
-    {
-        Cancel = 0,
-        Pending = 1,
-        WaitingForPayment = 2,
-        Paid = 3,
+        private void RecalculateTotal()
+        {
+            TotalAmount = _details.Sum(x => x.Price * x.Quantity);
+        }
     }
 }

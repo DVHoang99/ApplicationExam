@@ -27,10 +27,11 @@ public class ProductRepository : Repository<Product>, IProductRepository
         _context.Products.Remove(product);
     }
 
-    public async Task<Product?> GetByIdAsync(Ulid id, CancellationToken cancellationToken = default)
+    public new async Task<Product?> GetByIdAsync(Ulid id, CancellationToken cancellationToken = default)
     {
         return await _context.Products
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+            .Include(p => p.Inventories)
+            .FirstOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, cancellationToken);
     }
 
     public async Task<List<Product>> GetAllAsync(CancellationToken cancellationToken = default)

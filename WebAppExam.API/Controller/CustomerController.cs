@@ -34,8 +34,8 @@ namespace WebAppExam.API.Controller
         }
         [HttpGet]
         public async Task<IActionResult> GetAll(
-            [FromQuery] string phoneNumber,
-            [FromQuery] string customerName)
+            [FromQuery] string phoneNumber = "",
+            [FromQuery] string customerName = "")
         {
             var query = new GetAllCustomerQuery(phoneNumber, customerName);
             var result = await _mediator.Send(query);
@@ -43,7 +43,7 @@ namespace WebAppExam.API.Controller
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById([FromQuery] Ulid id)
+        public async Task<IActionResult> GetById(Ulid id)
         {
             var query = new GetCustomerByIdQuery(id);
             var result = await _mediator.Send(query);

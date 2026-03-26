@@ -29,28 +29,12 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "inventories",
-                columns: table => new
-                {
-                    Id = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: false),
-                    ProductId = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: false),
-                    Price = table.Column<int>(type: "integer", nullable: false),
-                    Stock = table.Column<int>(type: "integer", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_inventories", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "orders",
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: false),
                     CustomerId = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: false),
+                    TotalAmount = table.Column<int>(type: "integer", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -59,12 +43,6 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_orders", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_orders_customers_CustomerId",
-                        column: x => x.CustomerId,
-                        principalTable: "customers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -74,7 +52,7 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                     Id = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: false),
                     Name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
-                    InventoryId = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: false),
+                    Price = table.Column<int>(type: "integer", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
@@ -82,12 +60,6 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_products", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_products_inventories_InventoryId",
-                        column: x => x.InventoryId,
-                        principalTable: "inventories",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -98,8 +70,7 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                     OrderId = table.Column<string>(type: "character varying(40)", nullable: false),
                     ProductId = table.Column<string>(type: "character varying(26)", maxLength: 26, nullable: false),
                     Quantity = table.Column<int>(type: "integer", nullable: false),
-                    Price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    Discount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false, defaultValue: 0m),
+                    Price = table.Column<int>(type: "integer", precision: 18, scale: 2, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
@@ -111,6 +82,28 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                         name: "FK_order_details_orders_OrderId",
                         column: x => x.OrderId,
                         principalTable: "orders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "inventories",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: false),
+                    ProductId = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: false),
+                    Stock = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_inventories", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_inventories_products_ProductId",
+                        column: x => x.ProductId,
+                        principalTable: "products",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -143,12 +136,6 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                 column: "CustomerId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_products_InventoryId",
-                table: "products",
-                column: "InventoryId",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "IX_products_Name",
                 table: "products",
                 column: "Name");
@@ -158,6 +145,12 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "customers");
+
+            migrationBuilder.DropTable(
+                name: "inventories");
+
+            migrationBuilder.DropTable(
                 name: "order_details");
 
             migrationBuilder.DropTable(
@@ -165,12 +158,6 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "orders");
-
-            migrationBuilder.DropTable(
-                name: "inventories");
-
-            migrationBuilder.DropTable(
-                name: "customers");
         }
     }
 }

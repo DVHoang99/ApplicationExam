@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="MediatR" Version="14.1.0" />
     <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="11.1.0" />
     <PackageReference Include="SequentialGuid" Version="5.0.7" />
@@ -18,11 +20,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Behaviors\" />
     <Folder Include="Customers\Commands\" />
     <Folder Include="Customers\DTOs\" />
     <Folder Include="Customers\Queries\" />
     <Folder Include="Inventory\" />
     <Folder Include="Products\" />
+    <Folder Include="Products\Commands\" />
+    <Folder Include="Products\DTOs\" />
+    <Folder Include="Products\Queries\" />
+    <Folder Include="Shared\" />
   </ItemGroup>
 
 </Project>

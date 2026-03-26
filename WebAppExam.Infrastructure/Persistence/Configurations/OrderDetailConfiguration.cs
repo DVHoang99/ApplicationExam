@@ -35,10 +35,6 @@ public class OrderDetailConfiguration : IEntityTypeConfiguration<OrderDetail>
             .HasPrecision(18, 2)
             .IsRequired();
 
-        builder.Property(x => x.Discount)
-            .HasPrecision(18, 2)
-            .HasDefaultValue(0);
-
         builder.HasIndex(x => x.OrderId);
         builder.HasIndex(x => x.ProductId);
     }

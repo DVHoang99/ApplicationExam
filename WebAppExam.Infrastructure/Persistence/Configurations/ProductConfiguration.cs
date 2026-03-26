@@ -27,13 +27,8 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.Description)
             .HasMaxLength(1000);
 
-        builder.Property(x => x.InventoryId)
-            .IsRequired()
-            .HasConversion(
-                v => v.ToString(),
-                v => Ulid.Parse(v)
-            )
-            .HasMaxLength(40);
+        builder.Property(x => x.Price)
+            .IsRequired();
 
         builder.Property(x => x.CreatedAt)
             .IsRequired();
@@ -41,11 +36,6 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.UpdatedAt);
 
         builder.Property(x => x.DeletedAt);
-
-        builder.HasOne(x => x.Inventory)
-            .WithOne(i => i.Product)
-            .HasForeignKey<Product>(x => x.InventoryId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(x => x.Name);
     }

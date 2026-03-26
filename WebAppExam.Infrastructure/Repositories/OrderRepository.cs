@@ -28,7 +28,7 @@ public class OrderRepository : Repository<Order>, IOrderRepository
         return await _context.Orders.FindAsync(id);
     }
 
-    public async Task<Order?> GetByIdAsync(Ulid id, CancellationToken cancellationToken = default)
+    public new async Task<Order?> GetByIdAsync(Ulid id, CancellationToken cancellationToken = default)
     {
         return await _dbSet
             .Include(o => o.Details)

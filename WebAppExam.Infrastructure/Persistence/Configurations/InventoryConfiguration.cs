@@ -28,9 +28,6 @@ public class InventoryConfiguration : IEntityTypeConfiguration<Inventory>
             )
             .HasMaxLength(40);
 
-        builder.Property(x => x.Price)
-            .IsRequired();
-
         builder.Property(x => x.Stock)
             .IsRequired();
 
@@ -40,11 +37,6 @@ public class InventoryConfiguration : IEntityTypeConfiguration<Inventory>
         builder.Property(x => x.UpdatedAt);
 
         builder.Property(x => x.DeletedAt);
-
-        builder.HasOne(x => x.Product)
-            .WithOne(p => p.Inventory)
-            .HasForeignKey<Inventory>(x => x.ProductId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(x => x.ProductId).IsUnique();
     }
