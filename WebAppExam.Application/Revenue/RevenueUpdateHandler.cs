@@ -1,9 +1,6 @@
 using KafkaFlow;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Npgsql;
 using WebAppExam.Application.Orders.Events;
-using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
 
 namespace WebAppExam.Application.Revenue;
 

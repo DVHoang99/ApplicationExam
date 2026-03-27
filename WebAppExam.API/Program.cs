@@ -34,8 +34,8 @@ builder.Services.AddKafka(kafka => kafka
         .AddConsumer(consumer => consumer
             .Topic("order-events")
             .WithGroupId("revenue-update-group")
-            .WithWorkersCount(3) 
-            .WithBufferSize(100) 
+            .WithWorkersCount(3)
+            .WithBufferSize(100)
             .AddMiddlewares(middlewares => middlewares
                 .AddDeserializer<JsonCoreDeserializer>()
                 .AddTypedHandlers(h => h.AddHandler<RevenueUpdateHandler>())
@@ -67,6 +67,7 @@ builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
+builder.Services.AddScoped<IRevenueRepository, RevenueRepository>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
