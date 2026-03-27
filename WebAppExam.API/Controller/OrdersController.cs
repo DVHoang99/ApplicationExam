@@ -58,6 +58,9 @@ public class OrdersController : ControllerBase
         var command = new UpdateOrderCommand(id)
         {
             CustomerId = input.CustomerId,
+            CustomerName = input.CustomerName,
+            Address = input.Address,
+            PhoneNumber = input.PhoneNumber,
             Items = input.Details.Select(x => new OrderItemDto
             {
                 ProductId = x.ProductId,

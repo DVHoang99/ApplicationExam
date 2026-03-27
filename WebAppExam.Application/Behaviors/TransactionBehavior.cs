@@ -1,7 +1,6 @@
 using System;
 using MediatR;
 using WebAppExam.Application.Shared;
-using WebAppExam.Infrastructure.UnitOfWork;
 
 namespace WebAppExam.Application.Behaviors;
 

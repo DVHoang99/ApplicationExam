@@ -21,6 +21,12 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
         if (order == null)
             throw new Exception("Order not found");
 
+        order.UpdateOrderGeneralInformation(request.CustomerId, request.CustomerName, request.Address, request.PhoneNumber);
+        
+        order.CustomerId = request.CustomerId;
+        order.Address = request.Address;
+        order.PhoneNumber = request.PhoneNumber;
+
         var products = await _productRepository.GetProductByIdsAsync(request.Items.Select(x => x.ProductId).ToList(), ct);
 
         foreach (var item in request.Items)

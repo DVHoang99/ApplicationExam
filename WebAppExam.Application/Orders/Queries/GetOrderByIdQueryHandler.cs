@@ -25,7 +25,8 @@ public class GetOrderByIdHandler : IRequestHandler<GetOrderByIdQuery, OrderDto>
         {
             ProductId = x.ProductId,
             Quantity = x.Quantity,
-            Price = x.Price
+            Price = x.Price,
+            InventoryId = x.InventoryId
         }).ToList();
 
         return new OrderDto

@@ -1,9 +1,4 @@
-using System;
-using MediatR;
 using WebAppExam.Application.Shared;
-using WebAppExam.Domain;
-using WebAppExam.Domain.Repository;
-using WebAppExam.Infrastructure.UnitOfWork;
 
 namespace WebAppExam.Application.Customers.Command;
 

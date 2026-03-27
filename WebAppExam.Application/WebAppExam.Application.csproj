@@ -17,11 +17,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\WebAppExam.Infrastructure\WebAppExam.Infrastructure.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Folder Include="Behaviors\" />
+    <Folder Include="Common\" />
+    <Folder Include="Common\Caching\" />
     <Folder Include="Customers\Commands\" />
     <Folder Include="Customers\DTOs\" />
     <Folder Include="Customers\Queries\" />
@@ -32,6 +30,12 @@
     <Folder Include="Products\Queries\" />
     <Folder Include="Revenue\" />
     <Folder Include="Shared\" />
+    <Folder Include="UnitOfWork\" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WebAppExam.Domain\WebAppExam.Domain.csproj" />
+  </ItemGroup>
+
 
 </Project>

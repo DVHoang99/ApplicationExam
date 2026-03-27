@@ -54,5 +54,12 @@ namespace WebAppExam.Domain
         {
             TotalAmount = _details.Sum(x => x.Price * x.Quantity);
         }
+        public void UpdateOrderGeneralInformation(Ulid customerId, string address, string customerName, string phoneNumber)
+        {
+            Address = address;
+            CustomerName = customerName;
+            PhoneNumber = phoneNumber;
+            CustomerId = customerId;
+        }
     }
 }

@@ -4,21 +4,6 @@ using WebAppExam.Domain.Repository;
 using WebAppExam.Infrastructure.Repositories;
 
 namespace WebAppExam.Infrastructure.UnitOfWork;
-
-public interface IUnitOfWork : IAsyncDisposable
-{
-    IProductRepository Products { get; }
-    IOrderRepository Orders { get; }
-    IInventoryRepository Inventory { get; }
-    ICustomerRepository Customers { get; }
-
-
-    Task BeginTransactionAsync();
-    Task CommitAsync();
-    Task RollbackAsync();
-    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
-}
-
 public class UnitOfWork : IUnitOfWork, IAsyncDisposable
 {
     private readonly AppDbContext _context;

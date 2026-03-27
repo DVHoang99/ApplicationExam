@@ -42,6 +42,11 @@ builder.Services.AddKafka(kafka => kafka
     )
 );
 
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("RedisConnection");
+    options.InstanceName = "WebAppExam_";
+});
 
 builder.Services.AddMediatR(cfg =>
 {
