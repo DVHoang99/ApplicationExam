@@ -15,14 +15,16 @@ public class GetAllProductQueryHandler : IRequestHandler<GetAllProductQuery, Lis
 
     public async Task<List<ProductDTO>> Handle(GetAllProductQuery request, CancellationToken ct)
     {
-        var query = _productRepository.Query().Include(x => x.Inventories).Where(x => x.DeletedAt == null);
+        var query = _productRepository
+        .Include(_productRepository.Query())
+        .Where(x => x.DeletedAt == null);
 
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
-            query = query.Where(x => EF.Functions.Like(x.Name, $"%{request.SearchTerm}%"));
+            query = _productRepository.SearchProductNameQuery(query, request.SearchTerm);
         }
 
-        var products = await query.ToListAsync(ct);
+        var products = await _productRepository.ToListAsync(query, ct);
 
         return products.Select(x => new ProductDTO
         {

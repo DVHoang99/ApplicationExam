@@ -65,4 +65,21 @@ public class ProductRepository : Repository<Product>, IProductRepository
             x.DeletedAt == null)
             .ToDictionaryAsync(x => x.Id, x => x, cancellationToken);
     }
+
+    public IQueryable<Product> Include(IQueryable<Product> query)
+    {
+        return query.Include(p => p.Inventories);
+    }
+    public IQueryable<Product> SearchProductNameQuery(IQueryable<Product> query, string searchTerm)
+    {
+        return query.Where(x => EF.Functions.ILike(
+            AppDbContext.FUnaccent(x.Name),
+            AppDbContext.FUnaccent($"%{searchTerm}%")
+        ));
+    }
+
+    public Task<List<Product>> ToListAsync(IQueryable<Product> query, CancellationToken cancellationToken = default)
+    {
+        return query.ToListAsync(cancellationToken);
+    }
 }

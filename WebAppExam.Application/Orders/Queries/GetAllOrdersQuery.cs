@@ -1,5 +1,6 @@
 using System;
 using MediatR;
+using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Orders.DTOs;
 
 namespace WebAppExam.Application.Orders.Queries;
