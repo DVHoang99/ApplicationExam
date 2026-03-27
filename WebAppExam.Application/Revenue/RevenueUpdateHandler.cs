@@ -20,21 +20,10 @@ public class RevenueUpdateHandler : IMessageHandler<OrderCreatedIntegrationEvent
     {
         using var scope = _serviceProvider.CreateScope();
 
-        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var repository = scope.ServiceProvider.GetRequiredService<IRevenueRepository>();
 
-        var monthYear = message.OccurredOn.ToString("yyyy-MM");
+        await repository.UpsertMonthlyRevenueAsync(message.OccurredOn, message.Amount);
 
-        var sql = @"
-            INSERT INTO ""monthly_revenues"" (""MonthYear"", ""TotalOrders"", ""TotalRevenue"")
-            VALUES (@monthYear, 1, @amount)
-            ON CONFLICT (""MonthYear"") DO UPDATE SET 
-                ""TotalOrders"" = ""monthly_revenues"".""TotalOrders"" + 1,
-                ""TotalRevenue"" = ""monthly_revenues"".""TotalRevenue"" + @amount;";
-
-        await dbContext.Database.ExecuteSqlRawAsync(sql,
-            new NpgsqlParameter("@monthYear", monthYear),
-            new NpgsqlParameter("@amount", message.Amount));
-
-        Console.WriteLine($"[Kafka] Đã xử lý doanh thu cho đơn hàng: {message.OrderId}");
+        Console.WriteLine($"[Kafka] processing calculate monthly revenue for order {message.OrderId}");
     }
 }

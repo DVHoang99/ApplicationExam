@@ -4,8 +4,10 @@ using KafkaFlow;
 using KafkaFlow.Serializer;
 using Microsoft.EntityFrameworkCore;
 using WebAppExam.Application.Behaviors;
+using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Revenue;
 using WebAppExam.Domain.Repository;
+using WebAppExam.Infrastructure.Common.Caching;
 using WebAppExam.Infrastructure.Exceptions;
 using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
 using WebAppExam.Infrastructure.Repositories;
@@ -64,6 +66,7 @@ builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
