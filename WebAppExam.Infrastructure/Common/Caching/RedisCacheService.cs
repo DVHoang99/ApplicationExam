@@ -29,6 +29,19 @@ public class RedisCacheService : ICacheService
         await _cache.SetStringAsync(key, JsonSerializer.Serialize(data), options, cancellationToken);
     }
 
+    public async Task<T?> GetAsync<T>(string key, Func<Task<T>> functionToObtain, TimeSpan duration, CancellationToken cancellationToken = default)
+    {
+        var value = await GetAsync<T>(key, cancellationToken);
+
+        if (value == null)
+        {
+            value = await functionToObtain.Invoke();
+            if (value != null)
+                await SetAsync(key, value, duration, cancellationToken);
+        }
+
+        return value;
+    }
     public async Task RemoveByPrefixAsync(string prefix)
     {
         // Quét và xóa toàn bộ Key bắt đầu bằng prefix

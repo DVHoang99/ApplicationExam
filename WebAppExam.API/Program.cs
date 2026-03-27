@@ -3,6 +3,7 @@ using FluentValidation;
 using KafkaFlow;
 using KafkaFlow.Serializer;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 using WebAppExam.Application.Behaviors;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Revenue;
@@ -44,11 +45,20 @@ builder.Services.AddKafka(kafka => kafka
     )
 );
 
+var redisConfig = builder.Configuration.GetSection("Redis")["Configuration"] ?? "localhost:6379";
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    ConnectionMultiplexer.Connect(redisConfig)
+);
+
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = builder.Configuration.GetConnectionString("RedisConnection");
-    options.InstanceName = "WebAppExam_";
+    options.Configuration = redisConfig;
 });
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    ConnectionMultiplexer.Connect(redisConfig)
+);
 
 builder.Services.AddMediatR(cfg =>
 {
@@ -61,7 +71,6 @@ builder.Services.AddMediatR(cfg =>
 });
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
-builder.Services.AddValidatorsFromAssembly(typeof(ValidationBehavior<,>).Assembly);
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
