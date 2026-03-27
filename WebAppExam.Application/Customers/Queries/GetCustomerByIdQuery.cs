@@ -1,7 +1,6 @@
 using System;
 using MediatR;
 using WebAppExam.Domain;
-using WebAppExam.Infrastructure.UnitOfWork;
 
 namespace WebAppExam.Application.Customers.Queries;
 

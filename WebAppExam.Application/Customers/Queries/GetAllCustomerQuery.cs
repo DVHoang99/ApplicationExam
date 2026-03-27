@@ -1,9 +1,6 @@
-using System;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using WebAppExam.Application.Customers.DTOs;
 using WebAppExam.Domain.Repository;
-using WebAppExam.Infrastructure.UnitOfWork;
 
 namespace WebAppExam.Application.Customers.Queries;
 
@@ -29,15 +26,15 @@ public class GetAllCustomerQueryHandler : IRequestHandler<GetAllCustomerQuery, L
 
         if (!string.IsNullOrWhiteSpace(request.CustomerName))
         {
-            query = query.Where(x => EF.Functions.Like(x.CustomerName, $"%{request.CustomerName}%"));
+            query = _customerRepository.GetCustomerByCustomerNameQuery(query, request.CustomerName);
         }
 
         if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
         {
-            query = query.Where(x => EF.Functions.Like(x.PhoneNumber, $"%{request.PhoneNumber}%"));
+            query = _customerRepository.GetCustomerByCustomerNameQuery(query, request.CustomerName);
         }
 
-        var customers = await query.ToListAsync(ct);
+        var customers = await _customerRepository.ToListAsync(query, ct);
 
         return customers.Select(x => new CustomerDTO
         {

@@ -26,4 +26,24 @@ public class CustomerRepository : Repository<Customer>, ICustomerRepository
     {
         return await _context.Customers.Where(predicate).ToListAsync(cancellationToken);
     }
+
+    public IQueryable<Customer> GetCustomerByPhoneNumberQuery(IQueryable<Customer> query, string searchTerm)
+    {
+        return query.Where(x => EF.Functions.ILike(
+            AppDbContext.FUnaccent(x.PhoneNumber),
+            AppDbContext.FUnaccent($"%{searchTerm}%")
+        ));
+    }
+    public IQueryable<Customer> GetCustomerByCustomerNameQuery(IQueryable<Customer> query, string searchTerm)
+    {
+        return query.Where(x => EF.Functions.ILike(
+            AppDbContext.FUnaccent(x.CustomerName),
+            AppDbContext.FUnaccent($"%{searchTerm}%")
+        ));
+    }
+
+    public Task<List<Customer>> ToListAsync(IQueryable<Customer> query, CancellationToken cancellationToken = default)
+    {
+        return query.ToListAsync(cancellationToken);
+    }
 }

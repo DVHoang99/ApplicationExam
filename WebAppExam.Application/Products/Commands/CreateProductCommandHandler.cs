@@ -1,5 +1,6 @@
 using System;
 using MediatR;
+using WebAppExam.Domain;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Products.Commands;

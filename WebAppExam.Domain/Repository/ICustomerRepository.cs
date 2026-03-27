@@ -6,4 +6,7 @@ namespace WebAppExam.Domain.Repository;
 public interface ICustomerRepository : IRepository<Customer>
 {
     Task<Customer?> GetCustomerByEmailAsync(string email);
+    IQueryable<Customer> GetCustomerByPhoneNumberQuery(IQueryable<Customer> query, string searchTerm);
+    IQueryable<Customer> GetCustomerByCustomerNameQuery(IQueryable<Customer> query, string searchTerm);
+    Task<List<Customer>> ToListAsync(IQueryable<Customer> query, CancellationToken cancellationToken);
 }

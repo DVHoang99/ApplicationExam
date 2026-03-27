@@ -1,6 +1,4 @@
-using System;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using WebAppExam.Application.Products.DTOs;
 using WebAppExam.Domain.Repository;
 

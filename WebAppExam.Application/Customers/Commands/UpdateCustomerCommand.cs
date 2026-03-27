@@ -1,8 +1,4 @@
-using System;
-using System.Windows.Input;
-using MediatR;
 using WebAppExam.Application.Shared;
-using WebAppExam.Infrastructure.UnitOfWork;
 
 namespace WebAppExam.Application.Customers.Commands;
 
