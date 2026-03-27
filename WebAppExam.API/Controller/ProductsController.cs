@@ -9,11 +9,11 @@ namespace WebAppExam.API.Controller
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ProductController : ControllerBase
+    public class ProductsController : ControllerBase
     {
         private readonly IMediator _mediator;
 
-        public ProductController(IMediator mediator)
+        public ProductsController(IMediator mediator)
         {
             _mediator = mediator;
         }
@@ -27,7 +27,8 @@ namespace WebAppExam.API.Controller
                 Price = product.Price,
                 Inventories = product.Inventories.Select(x => new InventoryDTO
                 {
-                    Stock = x.Stock
+                    Stock = x.Stock,
+                    Name = x.Name
                 }).ToList()
             };
 
@@ -63,7 +64,8 @@ namespace WebAppExam.API.Controller
                 Inventories = input.Inventories.Select(x => new InventoryDTO
                 {
                     Id = x.Id,
-                    Stock = x.Stock
+                    Stock = x.Stock,
+                    Name = x.Name
                 }).ToList()
             };
 

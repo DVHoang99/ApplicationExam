@@ -24,7 +24,6 @@ public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TReques
 
         var context = new ValidationContext<TRequest>(request);
 
-        // Chạy tất cả các rule validation
         var validationResults = await Task.WhenAll(
             _validators.Select(v => v.ValidateAsync(context, cancellationToken)));
 
@@ -35,7 +34,6 @@ public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TReques
 
         if (failures.Count != 0)
         {
-            // Văng exception nếu có lỗi (chặn không cho đi vào Handler)
             throw new ValidationException(failures);
         }
 

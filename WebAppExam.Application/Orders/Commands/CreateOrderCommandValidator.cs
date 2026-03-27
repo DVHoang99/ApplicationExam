@@ -1,4 +1,5 @@
 using System;
+using System.Data;
 using FluentValidation;
 using WebAppExam.Application.Orders.DTOs;
 
@@ -22,6 +23,14 @@ public class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
     {
         RuleFor(x => x.CustomerId)
                 .NotEmpty().WithMessage(x => $"CustomerId {x.CustomerId} cannot be empty.");
+        RuleFor(x => x.CustomerName)
+                .NotEmpty().WithMessage(x => $"CustomerName {x.CustomerName} cannot be empty.");
+        RuleFor(x => x.Address)
+                .NotEmpty().WithMessage(x => $"Address {x.Address} cannot be empty.")
+                .MaximumLength(200).WithMessage("Address must not exceed 100 characters.");
+        RuleFor(x => x.PhoneNumber)
+                .NotEmpty().WithMessage(x => $"PhoneNumber {x.PhoneNumber} cannot be empty.")
+                .Matches(@"^\+?[1-9]\d{1,14}$").WithMessage("Phone number is not valid.");
 
         RuleForEach(x => x.Items)
                 .SetValidator(new OrderItemDtoValidator());

@@ -9,7 +9,7 @@ public class MonthlyRevenueConfiguration : IEntityTypeConfiguration<MonthlyReven
 {
     public void Configure(EntityTypeBuilder<MonthlyRevenue> builder)
     {
-        builder.ToTable("MonthlyRevenues");
+        builder.ToTable("monthly_revenues");
 
         builder.HasKey(x => x.MonthYear);
 

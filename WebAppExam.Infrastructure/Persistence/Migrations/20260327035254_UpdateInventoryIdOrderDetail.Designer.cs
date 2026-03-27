@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
@@ -11,9 +12,11 @@ using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
 namespace WebAppExam.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260327035254_UpdateInventoryIdOrderDetail")]
+    partial class UpdateInventoryIdOrderDetail
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -109,7 +112,7 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
 
                     b.HasKey("MonthYear");
 
-                    b.ToTable("monthly_revenues", (string)null);
+                    b.ToTable("MonthlyRevenues", (string)null);
                 });
 
             modelBuilder.Entity("WebAppExam.Domain.Order", b =>
@@ -117,11 +120,6 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                     b.Property<string>("Id")
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
-
-                    b.Property<string>("Address")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -131,16 +129,8 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
-                    b.Property<string>("CustomerName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PhoneNumber")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");

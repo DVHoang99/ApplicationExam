@@ -25,7 +25,7 @@ public class UpdateProductCommandHandler : IRequestHandler<UpdateProductCommand,
 
         foreach (var inventory in request.Inventories)
         {
-            product.AddOrUpdateInventory(inventory.Id, product.Price, inventory.Stock, product.Id);
+            product.AddOrUpdateInventory(inventory.Id, inventory.Stock, product.Id, inventory.Name);
         }
 
         _productRepository.Update(product);

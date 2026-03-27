@@ -22,7 +22,12 @@ public class UpdateProductCommandValidator : FluentValidation.AbstractValidator<
 
         RuleForEach(x => x.Inventories).ChildRules(inventory =>
         {
-            inventory.RuleFor(i => i.Id).NotEmpty().WithMessage("Inventory ID is required.");
+            inventory.RuleFor(i => i.Stock)
+                .GreaterThanOrEqualTo(0).WithMessage("Stock cannot be negative.");
+                
+            inventory.RuleFor(i => i.Name)
+                .NotEmpty().WithMessage("Inventory name is required.")
+                .MaximumLength(100).WithMessage("Inventory name must not exceed 100 characters.");
         });
     }
 }

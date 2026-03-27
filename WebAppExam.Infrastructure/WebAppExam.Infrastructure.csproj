@@ -5,8 +5,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -22,6 +26,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WebAppExam.Domain\WebAppExam.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Exceptions\" />
   </ItemGroup>
 
 </Project>

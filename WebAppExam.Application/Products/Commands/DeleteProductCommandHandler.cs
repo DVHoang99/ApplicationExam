@@ -20,12 +20,16 @@ public class DeleteProductCommandHandler : IRequestHandler<DeleteProductCommand,
         if (product == null)
             throw new Exception("Product not found");
 
-        product.DeletedAt = DateTime.Now;
+        product.DeletedAt = DateTime.UtcNow;
+        product.UpdatedAt = DateTime.UtcNow;
 
         foreach (var item in product.Inventories)
         {
             product.DeleteInventory(item.Id);
         }
+
+        _productRepository.Update(product);
+
         return product.Id;
     }
 }

@@ -1,21 +1,20 @@
+using System;
 using MediatR;
 using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Orders.Queries;
 
-public class GetOrderListQuery() : IRequest<List<OrderDto>>;
-
-public class GetOrderListHandler : IRequestHandler<GetOrderListQuery, List<OrderDto>>
+public class GetAllOrdersQueryHandler : IRequestHandler<GetAllOrdersQuery, List<OrderDto>>
 {
     private readonly IOrderRepository _repo;
 
-    public GetOrderListHandler(IOrderRepository repo)
+    public GetAllOrdersQueryHandler(IOrderRepository repo)
     {
         _repo = repo;
     }
 
-    public async Task<List<OrderDto>> Handle(GetOrderListQuery request, CancellationToken cancellationToken)
+    public async Task<List<OrderDto>> Handle(GetAllOrdersQuery request, CancellationToken cancellationToken)
     {
         var orders = await _repo.GetAllAsync(cancellationToken);
 
@@ -23,12 +22,17 @@ public class GetOrderListHandler : IRequestHandler<GetOrderListQuery, List<Order
         {
             Id = order.Id,
             CustomerId = order.CustomerId,
-            Status = order.Status.ToString(),
+            Status = order.Status,
+            TotalAmount = order.TotalAmount,
+            CustomerName = order.CustomerName,
+            Address = order.Address,
+            PhoneNumber = order.PhoneNumber,
             Details = order.Details.Select(x => new OrderDetailDto
             {
                 ProductId = x.ProductId,
                 Quantity = x.Quantity,
-                Price = x.Price
+                Price = x.Price,
+                InventoryId = x.InventoryId
             }).ToList()
         }).ToList();
     }

@@ -25,7 +25,9 @@ public class Repository<T> : IRepository<T> where T : class
 
     public async Task<List<T>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        return await _dbSet.Where(x => EF.Property<DateTime?>(x, "DeletedAt") == null).ToListAsync(cancellationToken);
+        return await _dbSet.Where(x => EF.Property<DateTime?>(x, "DeletedAt") == null)
+        .OrderByDescending(x => EF.Property<Ulid>(x, "Id"))
+        .ToListAsync(cancellationToken);
     }
 
     public async Task<List<T>> FindAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)

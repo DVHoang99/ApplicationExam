@@ -25,11 +25,11 @@ public class RevenueUpdateHandler : IMessageHandler<OrderCreatedIntegrationEvent
         var monthYear = message.OccurredOn.ToString("yyyy-MM");
 
         var sql = @"
-            INSERT INTO ""MonthlyRevenues"" (""MonthYear"", ""TotalOrders"", ""TotalRevenue"")
+            INSERT INTO ""monthly_revenues"" (""MonthYear"", ""TotalOrders"", ""TotalRevenue"")
             VALUES (@monthYear, 1, @amount)
             ON CONFLICT (""MonthYear"") DO UPDATE SET 
-                ""TotalOrders"" = ""MonthlyRevenues"".""TotalOrders"" + 1,
-                ""TotalRevenue"" = ""MonthlyRevenues"".""TotalRevenue"" + @amount;";
+                ""TotalOrders"" = ""monthly_revenues"".""TotalOrders"" + 1,
+                ""TotalRevenue"" = ""monthly_revenues"".""TotalRevenue"" + @amount;";
 
         await dbContext.Database.ExecuteSqlRawAsync(sql,
             new NpgsqlParameter("@monthYear", monthYear),

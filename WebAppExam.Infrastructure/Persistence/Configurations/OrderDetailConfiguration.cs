@@ -32,8 +32,15 @@ public class OrderDetailConfiguration : IEntityTypeConfiguration<OrderDetail>
             .IsRequired();
 
         builder.Property(x => x.Price)
-            .HasPrecision(18, 2)
             .IsRequired();
+
+        builder.Property(x => x.InventoryId)
+            .HasConversion(
+                v => v.ToString(),
+                v => Ulid.Parse(v)
+            )
+            .IsRequired()
+            .HasMaxLength(40);
 
         builder.HasIndex(x => x.OrderId);
         builder.HasIndex(x => x.ProductId);

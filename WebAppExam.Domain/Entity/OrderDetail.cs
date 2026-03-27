@@ -6,9 +6,10 @@ public class OrderDetail : EntityBase
     public Ulid ProductId { get; set; }
     public int Quantity { get; set; }
     public int Price { get; set; }
+    public Ulid InventoryId { get; set; }
     protected OrderDetail() { }
 
-    internal OrderDetail(Ulid productId, int unitPrice, int quantity)
+    internal OrderDetail(Ulid productId, int unitPrice, int quantity, Ulid inventoryId)
     {
         if (quantity <= 0) throw new ArgumentException("Quantity greater than 0 is required");
         if (unitPrice < 0) throw new ArgumentException("Price greater than 0 is required");
@@ -17,6 +18,8 @@ public class OrderDetail : EntityBase
         ProductId = productId;
         Price = unitPrice;
         Quantity = quantity;
+        InventoryId = inventoryId;
+        CreatedAt = DateTime.UtcNow;
     }
 
     internal void UpdateQuantity(int additionalQuantity)

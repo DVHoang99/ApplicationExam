@@ -38,6 +38,16 @@ namespace WebAppExam.Infrastructure.Persistence.Configurations
 
             builder.Property(x => x.DeletedAt);
 
+            builder.Property(x => x.Address)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            builder.Property(x => x.CustomerName)
+                .IsRequired();
+
+            builder.Property(x => x.PhoneNumber)
+                .IsRequired();
+
             builder.HasIndex(x => x.CustomerId);
         }
     }

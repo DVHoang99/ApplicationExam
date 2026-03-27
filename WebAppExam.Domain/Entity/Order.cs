@@ -7,20 +7,26 @@ namespace WebAppExam.Domain
         public Ulid CustomerId { get; set; }
         public int TotalAmount { get; set; }
         public OrderStatus Status { get; set; }
+        public string Address { get; set; }
+        public string CustomerName { get; set; }
+        public string PhoneNumber { get; set; }
         private readonly List<OrderDetail> _details = new();
         public IReadOnlyCollection<OrderDetail> Details => _details.AsReadOnly();
 
         protected Order() { }
 
-        public Order(Ulid customerId)
+        public Order(Ulid customerId, string address, string customerName, string phoneNumber)
         {
             Id = Ulid.NewUlid();
             CustomerId = customerId;
             CreatedAt = DateTime.UtcNow;
             Status = OrderStatus.Pending;
+            Address = address;
+            CustomerName = customerName;
+            PhoneNumber = phoneNumber;
         }
 
-        public void AddOrUpdateItem(Ulid productId, int unitPrice, int quantity)
+        public void AddOrUpdateItem(Ulid productId, int unitPrice, int quantity, Ulid inventoryId)
         {
             var existingItem = _details.SingleOrDefault(x => x.ProductId == productId);
 
@@ -30,8 +36,9 @@ namespace WebAppExam.Domain
             }
             else
             {
-                _details.Add(new OrderDetail(productId, unitPrice, quantity));
+                _details.Add(new OrderDetail(productId, unitPrice, quantity, inventoryId));
             }
+            RecalculateTotal();
         }
 
         public void RemoveItem(Ulid productId)
@@ -41,6 +48,7 @@ namespace WebAppExam.Domain
             {
                 _details.Remove(item);
             }
+            RecalculateTotal();
         }
         private void RecalculateTotal()
         {

@@ -18,7 +18,8 @@ public class DeleteCustomerCommandHandler : IRequestHandler<DeleteCustomerComman
         if (customer == null)
             throw new Exception("Customer not found");
 
-        customer.DeletedAt = DateTime.Now;
+        customer.DeletedAt = DateTime.UtcNow;
+        customer.UpdatedAt = DateTime.UtcNow;
 
         _customerRepository.Update(customer);
         return customer.Id;

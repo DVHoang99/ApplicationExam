@@ -34,10 +34,13 @@ public class InventoryConfiguration : IEntityTypeConfiguration<Inventory>
         builder.Property(x => x.CreatedAt)
             .IsRequired();
 
+        builder.Property(x => x.Name)
+        .HasMaxLength(100);
+
         builder.Property(x => x.UpdatedAt);
 
         builder.Property(x => x.DeletedAt);
 
-        builder.HasIndex(x => x.ProductId).IsUnique();
+        builder.HasIndex(x => x.ProductId);
     }
 }

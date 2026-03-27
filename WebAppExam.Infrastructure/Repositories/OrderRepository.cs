@@ -35,4 +35,13 @@ public class OrderRepository : Repository<Order>, IOrderRepository
             .FirstOrDefaultAsync(o => o.Id == id
             && o.DeletedAt == null, cancellationToken);
     }
+
+    public new async Task<List<Order>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Include(o => o.Details)
+            .Where(o => o.DeletedAt == null)
+            .OrderByDescending(o => o.Id)
+            .ToListAsync(cancellationToken);
+    }
 }

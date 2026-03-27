@@ -30,7 +30,8 @@ public class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, P
             Inventories = product.Inventories.Select(x => new InventoryDTO
             {
                 Id = x.Id,
-                Stock = x.Stock
+                Stock = x.Stock,
+                Name = x.Name
             }).ToList()
         };
     }

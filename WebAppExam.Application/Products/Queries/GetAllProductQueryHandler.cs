@@ -35,7 +35,8 @@ public class GetAllProductQueryHandler : IRequestHandler<GetAllProductQuery, Lis
             Inventories = x.Inventories.Select(y => new InventoryDTO
             {
                 Id = y.Id,
-                Stock = y.Stock
+                Stock = y.Stock,
+                Name = y.Name
             }).ToList()
         }).ToList();
     }

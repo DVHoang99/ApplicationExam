@@ -29,7 +29,7 @@ public class CreateCustomerCommandHandler : IRequestHandler<CreateCustomerComman
             CustomerName = request.CustomerName,
             Email = request.Email,
             PhoneNumber = request.Phone,
-            CreatedAt = DateTimeOffset.UtcNow.DateTime,
+            CreatedAt = DateTime.UtcNow,
         };
 
         await _customerRepository.AddAsync(customer, ct);

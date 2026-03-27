@@ -20,7 +20,7 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
 
         foreach (var inventory in request.Inventories)
         {
-            product.AddOrUpdateInventory(Ulid.Empty, product.Price, inventory.Stock, product.Id);
+            product.AddOrUpdateInventory(Ulid.Empty, inventory.Stock, product.Id, inventory.Name);
         }
 
         await _repository.AddAsync(product, ct);

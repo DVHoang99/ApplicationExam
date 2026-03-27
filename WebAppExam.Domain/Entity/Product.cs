@@ -6,7 +6,7 @@ namespace WebAppExam.Domain
     {
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-         public int Price { get; set; }
+        public int Price { get; set; }
         private readonly List<Inventory> _inventories = new();
         public IReadOnlyCollection<Inventory> Inventories => _inventories.AsReadOnly();
 
@@ -20,9 +20,11 @@ namespace WebAppExam.Domain
             CreatedAt = DateTime.UtcNow;
         }
 
-        public void AddOrUpdateInventory(Ulid InventoryId, int price, int stock, Ulid productId)
+        public void AddOrUpdateInventory(Ulid inventoryId, int stock, Ulid productId, string inventoryName)
         {
-            var existingItem = _inventories.SingleOrDefault(x => x.Id == InventoryId);
+            var existingItem = inventoryId != Ulid.Empty 
+                ? _inventories.SingleOrDefault(x => x.Id == inventoryId) 
+                : null;
 
             if (existingItem != null)
             {
@@ -30,7 +32,7 @@ namespace WebAppExam.Domain
             }
             else
             {
-                _inventories.Add(new Inventory(productId, price, stock));
+                _inventories.Add(new Inventory(productId, stock, inventoryName));
             }
         }
 
@@ -42,6 +44,6 @@ namespace WebAppExam.Domain
             {
                 inventory.DeleteInventory();
             }
-        }   
+        }
     }
 }
