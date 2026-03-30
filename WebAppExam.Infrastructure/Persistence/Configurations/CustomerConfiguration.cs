@@ -39,8 +39,6 @@ namespace WebAppExam.Infrastructure.Persistence.Configurations
 
             builder.Property(x => x.DeletedAt);
 
-            builder.HasIndex(x => x.Email)
-            .IsUnique();
         }
     }
 }
