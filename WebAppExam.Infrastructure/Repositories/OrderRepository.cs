@@ -44,4 +44,12 @@ public class OrderRepository : Repository<Order>, IOrderRepository
             .OrderByDescending(o => o.Id)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IEnumerable<Order>> GetByDateAsync(DateTime date)
+    {
+        return await _dbSet
+            .Include(o => o.Details)
+            .Where(o => o.CreatedAt.Date == date.Date && o.DeletedAt == null)
+            .ToListAsync();
+    }
 }

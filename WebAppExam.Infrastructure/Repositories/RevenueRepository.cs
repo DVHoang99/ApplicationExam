@@ -26,7 +26,6 @@ public class RevenueRepository : IRevenueRepository
                 ""TotalOrders"" = ""monthly_revenues"".""TotalOrders"" + 1,
                 ""TotalRevenue"" = ""monthly_revenues"".""TotalRevenue"" + @amount;";
 
-        // NpgsqlParameter được sử dụng hợp lệ tại đây
         await _dbContext.Database.ExecuteSqlRawAsync(sql,
             new NpgsqlParameter("@monthYear", monthYear),
             new NpgsqlParameter("@amount", amount));

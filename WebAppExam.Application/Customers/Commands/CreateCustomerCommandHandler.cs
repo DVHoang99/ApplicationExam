@@ -21,7 +21,10 @@ public class CreateCustomerCommandHandler : IRequestHandler<CreateCustomerComman
         var customerByEmail = await _customerRepository.GetCustomerByEmailAsync(request.Email);
 
         if (customerByEmail != null)
-            throw new Exception("Customer already exists");
+        {
+            var failure = new FluentValidation.Results.ValidationFailure("Customer", "Customer already exists");
+            throw new FluentValidation.ValidationException(new[] { failure });
+        }
 
         var customer = new Customer
         {

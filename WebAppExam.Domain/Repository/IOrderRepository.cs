@@ -4,6 +4,7 @@ namespace WebAppExam.Domain.Repository
 {
     public interface IOrderRepository : IRepository<Order>
     {
-        Task<List<Order>> GetByCustomerIdAsync(Ulid customerId);  
+        Task<List<Order>> GetByCustomerIdAsync(Ulid customerId); 
+        Task<IEnumerable<Order>> GetByDateAsync(DateTime date);
     }
 }

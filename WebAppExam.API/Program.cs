@@ -1,7 +1,8 @@
 using System.Reflection;
 using System.Security.Claims;
 using System.Text;
-using FluentValidation;
+using Hangfire;
+using Hangfire.PostgreSql;
 using KafkaFlow;
 using KafkaFlow.Serializer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,7 +10,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
-using WebAppExam.API.Middlewares;
 using WebAppExam.API.Services;
 using WebAppExam.Application.Auth.Services;
 using WebAppExam.Application.Behaviors;
@@ -20,6 +20,7 @@ using WebAppExam.Application.Services;
 using WebAppExam.Domain.Repository;
 using WebAppExam.Infrastructure.Common.Caching;
 using WebAppExam.Infrastructure.Exceptions;
+using WebAppExam.Infrastructure.Jobs;
 using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
 using WebAppExam.Infrastructure.Repositories;
 using WebAppExam.Infrastructure.UnitOfWork;
@@ -104,6 +105,7 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
 builder.Services.AddScoped<IRevenueRepository, RevenueRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IDailyRevenueRepository, DailyRevenueRepository>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -137,9 +139,34 @@ builder.Services.AddAuthorization(options =>
             .Build();
     });
 
+builder.Services.AddHangfire(config => config
+.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+.UseSimpleAssemblyNameTypeSerializer()
+.UseRecommendedSerializerSettings()
+.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")))
+);
+
+builder.Services.AddHangfireServer();
+
 builder.Services.AddControllers();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+    // Schedule to run at 5 PM (17:00) VN time = 10:00 UTC
+    recurringJobManager.AddOrUpdate<RevenueBackgroundJob>(
+        "daily-revenue-calculation",
+        job => job.RunDailyCalculation(),
+        "0 10 * * *",
+        new RecurringJobOptions
+        {
+            TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")
+        }
+    );
+}
 //app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseExceptionHandler();
 app.UseRouting();

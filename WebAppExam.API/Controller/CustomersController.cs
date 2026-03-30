@@ -1,7 +1,5 @@
-using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using WebAppExam.Application.Customers.Command;
 using WebAppExam.Application.Customers.Commands;
