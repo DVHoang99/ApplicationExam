@@ -34,7 +34,13 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, T
             throw new FluentValidation.ValidationException(new[] { failure });
         }
 
-        string username = principal.Identity.Name;
+        string? username = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            var failure = new FluentValidation.Results.ValidationFailure("username", "Username not found");
+            throw new FluentValidation.ValidationException(new[] { failure });
+        }
 
         // Find user and validate the refresh token
         var user = await _userRepository.GetByUsernameAsync(username, ct);
@@ -68,7 +74,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, T
             ValidAudience = _configuration["Jwt:Audience"],
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!)),
-            ValidateLifetime = false // Ignore token expiration when extracting claims
+            ValidateLifetime = false
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();

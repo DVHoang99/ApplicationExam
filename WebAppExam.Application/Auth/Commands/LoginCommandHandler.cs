@@ -1,11 +1,4 @@
-using System;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 using MediatR;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
 using WebAppExam.Application.Auth.DTOs;
 using WebAppExam.Application.Auth.Services;
 using WebAppExam.Application.Common.Helpers;
@@ -16,13 +9,11 @@ namespace WebAppExam.Application.Auth.Commands;
 public class LoginCommandHandler : IRequestHandler<LoginCommand, TokenDTO>
 {
     private readonly IUserRepository _userRepository;
-    private readonly IConfiguration _configuration;
     private readonly IAuthService _authService;
 
-    public LoginCommandHandler(IUserRepository userRepository, IConfiguration configuration, IAuthService authService)
+    public LoginCommandHandler(IUserRepository userRepository, IAuthService authService)
     {
         _userRepository = userRepository;
-        _configuration = configuration;
         _authService = authService;
     }
 
@@ -39,9 +30,9 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, TokenDTO>
         var token = _authService.GenerateJwtToken(user.Username, user.Role);
         var refreshToken = _authService.GenerateRefreshToken();
 
-        user.RefreshToken = refreshToken;
-        user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7);
+        user.UpdateRefeshToken(refreshToken, DateTime.UtcNow.AddDays(7));
 
+        _userRepository.Update(user);
 
         return new TokenDTO
         {

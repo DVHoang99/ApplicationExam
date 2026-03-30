@@ -9,18 +9,18 @@ namespace WebAppExam.API.Controller
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UserController : ControllerBase
+    public class UsersController : ControllerBase
     {
         private readonly IMediator _mediator;
 
-        public UserController(IMediator mediator)
+        public UsersController(IMediator mediator)
         {
             _mediator = mediator;
         }
 
         [HttpPost]
         [AllowAnonymous]
-        public IActionResult Create([FromBody] UserDTO request)
+        public async Task<IActionResult> Create([FromBody] UserDTO request)
         {
             var command = new CreateUserCommand
             {
@@ -29,7 +29,7 @@ namespace WebAppExam.API.Controller
                 Name = request.Name,
                 Role = request.Role
             };
-            var result = _mediator.Send(command);
+            var result = await _mediator.Send(command);
             return Ok(result);
         }
     }

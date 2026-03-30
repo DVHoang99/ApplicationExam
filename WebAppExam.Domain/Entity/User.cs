@@ -22,7 +22,7 @@ public class User : EntityBase
         CreatedAt = DateTime.UtcNow;
     }
 
-    protected void UpdateUser(string passwordHash, string name, string role)
+    public void UpdateUser(string passwordHash, string name, string role)
     {
         UpdatedAt = DateTime.UtcNow;
         PasswordHash = passwordHash;
@@ -30,8 +30,17 @@ public class User : EntityBase
         Role = role;
     }
 
-    protected void DeleteUser()
+    public void UpdateRefeshToken(string refreshToken, DateTime refreshTokenExpiryTime)
+    {
+        UpdatedAt = DateTime.UtcNow;
+        RefreshToken = refreshToken;
+        RefreshTokenExpiryTime = refreshTokenExpiryTime;
+    }
+
+    public void DeleteUser()
     {
         DeletedAt = DateTime.UtcNow;
     }
+
+    
 }
