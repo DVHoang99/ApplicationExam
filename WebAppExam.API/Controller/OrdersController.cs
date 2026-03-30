@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppExam.Application.Orders.Commands;
 using WebAppExam.Application.Orders.DTOs;
@@ -18,6 +19,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] OrderDto input)
     {
         var command = new CreateOrderCommand
@@ -53,6 +55,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(Ulid id, [FromBody] OrderDto input)
     {
         var command = new UpdateOrderCommand(id)
@@ -73,6 +76,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(Ulid id)
     {
         var command = new DeleteOrderCommand(id);

@@ -31,7 +31,7 @@ public class GetAllCustomerQueryHandler : IRequestHandler<GetAllCustomerQuery, L
 
         if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
         {
-            query = _customerRepository.GetCustomerByCustomerNameQuery(query, request.CustomerName);
+            query = _customerRepository.GetCustomerByPhoneNumberQuery(query, request.PhoneNumber);
         }
 
         var customers = await _customerRepository.ToListAsync(query, ct);

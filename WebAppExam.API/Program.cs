@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Claims;
 using System.Text;
 using FluentValidation;
 using KafkaFlow;
@@ -98,7 +99,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
+
+            RoleClaimType = ClaimTypes.Role
         };
     });
 
@@ -114,9 +117,11 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseExceptionHandler();
+
 var kafkaBus = app.Services.CreateKafkaBus();
 await kafkaBus.StartAsync();
 app.MapControllers();

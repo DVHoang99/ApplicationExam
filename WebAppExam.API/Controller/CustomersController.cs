@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using WebAppExam.Application.Customers.Command;
@@ -20,6 +22,7 @@ namespace WebAppExam.API.Controller
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] CustomerDTO input)
         {
             var command = new CreateCustomerCommand
@@ -30,6 +33,7 @@ namespace WebAppExam.API.Controller
             };
 
             var id = await _mediator.Send(command);
+
             return Ok(id);
         }
         [HttpGet]
@@ -51,6 +55,7 @@ namespace WebAppExam.API.Controller
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(Ulid id, [FromBody] CustomerDTO input)
         {
             var command = new UpdateCustomerCommand(id)
@@ -65,6 +70,7 @@ namespace WebAppExam.API.Controller
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(Ulid id)
         {
             var command = new DeleteCustomerCommand(id);

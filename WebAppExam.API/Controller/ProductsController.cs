@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using WebAppExam.Application.Products.Commands;
@@ -18,6 +19,7 @@ namespace WebAppExam.API.Controller
             _mediator = mediator;
         }
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] ProductDTO product)
         {
             var command = new CreateProductCommand
@@ -54,6 +56,7 @@ namespace WebAppExam.API.Controller
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(Ulid id, [FromBody] ProductDTO input)
         {
             var command = new UpdateProductCommand(id)
@@ -74,6 +77,7 @@ namespace WebAppExam.API.Controller
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(Ulid id)
         {
             var command = new DeleteProductCommand(id);
