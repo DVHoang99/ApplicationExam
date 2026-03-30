@@ -3,5 +3,4 @@
   <Project Path="WebAppExam.Application/WebAppExam.Application.csproj" Id="a051a652-c897-4aa5-97fa-c9cd5db0f21a" />
   <Project Path="WebAppExam.Domain/WebAppExam.Domain.csproj" Id="651e60e9-2a2a-4e23-9b93-7ae95dba9e09" />
   <Project Path="WebAppExam.Infrastructure/WebAppExam.Infrastructure.csproj" Id="0798f87e-3559-4a26-9d76-33ade2cd4343" />
-  <Project Path="WebAppExam.LogConsumer/WebAppExam.LogConsumer.csproj" />
 </Solution>

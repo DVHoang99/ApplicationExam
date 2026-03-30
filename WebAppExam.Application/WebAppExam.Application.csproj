@@ -31,6 +31,7 @@
     <Folder Include="Customers\DTOs\" />
     <Folder Include="Customers\Queries\" />
     <Folder Include="Inventory\" />
+    <Folder Include="Logger\Handlers\" />
     <Folder Include="Products\" />
     <Folder Include="Products\Commands\" />
     <Folder Include="Products\DTOs\" />

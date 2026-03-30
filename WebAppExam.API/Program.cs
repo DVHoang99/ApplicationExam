@@ -9,9 +9,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
+using WebAppExam.API.Middlewares;
 using WebAppExam.Application.Auth.Services;
 using WebAppExam.Application.Behaviors;
 using WebAppExam.Application.Common.Caching;
+using WebAppExam.Application.Logger.Handlers;
 using WebAppExam.Application.Revenue;
 using WebAppExam.Domain.Repository;
 using WebAppExam.Infrastructure.Common.Caching;
@@ -38,6 +40,12 @@ builder.Services.AddKafka(kafka => kafka
                 .DefaultTopic("order-events")
                 .AddMiddlewares(m => m.AddSerializer<JsonCoreSerializer>())
         )
+        .AddProducer(
+            "system-logs-producer",
+            producer => producer
+                .DefaultTopic("system-logs-topic")
+                .AddMiddlewares(m => m.AddSerializer<JsonCoreSerializer>())
+        )
         .AddConsumer(consumer => consumer
             .Topic("order-events")
             .WithGroupId("revenue-update-group")
@@ -46,6 +54,16 @@ builder.Services.AddKafka(kafka => kafka
             .AddMiddlewares(middlewares => middlewares
                 .AddDeserializer<JsonCoreDeserializer>()
                 .AddTypedHandlers(h => h.AddHandler<RevenueUpdateHandler>())
+            )
+        )
+        .AddConsumer(consumer => consumer
+            .Topic("system-logs-topic")
+            .WithGroupId("api-internal-logger-group")
+            .WithWorkersCount(2)
+            .WithBufferSize(100)
+            .AddMiddlewares(middlewares => middlewares
+                .AddDeserializer<JsonCoreDeserializer>()
+                .AddTypedHandlers(h => h.AddHandler<LogMessageHandler>())
             )
         )
     )
@@ -84,6 +102,7 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
 builder.Services.AddScoped<IRevenueRepository, RevenueRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddSingleton<ILogRepository, MongoLogRepository>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -116,7 +135,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddControllers();
 
 var app = builder.Build();
-
+app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseExceptionHandler();
 app.UseRouting();
 app.UseAuthentication();
