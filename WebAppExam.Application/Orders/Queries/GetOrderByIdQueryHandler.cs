@@ -20,9 +20,8 @@ public class GetOrderByIdHandler : IRequestHandler<GetOrderByIdQuery, OrderDto>
 
     public async Task<OrderDto> Handle(GetOrderByIdQuery request, CancellationToken cancellationToken)
     {
-        var orderDTO = await _cacheService.GetAsync<OrderDto>("order_detail", async () =>
+        var orderDTO = await _cacheService.GetAsync($"order_detail:{request.Id}", async () =>
         {
-            //GetAsync
             var order = await _repo.GetByIdAsync(request.Id, cancellationToken);
 
             if (order == null)

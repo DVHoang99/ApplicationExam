@@ -44,7 +44,6 @@ public class RedisCacheService : ICacheService
     }
     public async Task RemoveByPrefixAsync(string prefix)
     {
-        // Quét và xóa toàn bộ Key bắt đầu bằng prefix
         var endpoints = _redis.GetEndPoints();
         var server = _redis.GetServer(endpoints.First());
 

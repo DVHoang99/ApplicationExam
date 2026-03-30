@@ -1,5 +1,6 @@
 using System;
 using MediatR;
+using WebAppExam.Application.Common.Caching;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Orders.Commands;
@@ -8,11 +9,15 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IProductRepository _productRepository;
+    private readonly ICacheService _cacheService;
 
-    public UpdateOrderCommandHandler(IOrderRepository orderRepository, IProductRepository productRepository)
+    public UpdateOrderCommandHandler(IOrderRepository orderRepository,
+    ICacheService cacheService,
+    IProductRepository productRepository)
     {
         _orderRepository = orderRepository;
         _productRepository = productRepository;
+        _cacheService = cacheService;
     }
 
     public async Task<Ulid> Handle(UpdateOrderCommand request, CancellationToken ct)
@@ -22,7 +27,7 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
             throw new Exception("Order not found");
 
         order.UpdateOrderGeneralInformation(request.CustomerId, request.CustomerName, request.Address, request.PhoneNumber);
-        
+
         order.CustomerId = request.CustomerId;
         order.Address = request.Address;
         order.PhoneNumber = request.PhoneNumber;
@@ -45,6 +50,8 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
         }
 
         _orderRepository.Update(order);
+
+        await _cacheService.RemoveByPrefixAsync($"order_detail:{request.Id}");
         return order.Id;
     }
 }

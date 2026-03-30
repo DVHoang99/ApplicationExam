@@ -7,19 +7,26 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
     <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="KafkaFlow" Version="4.2.0" />
     <PackageReference Include="MediatR" Version="14.1.0" />
     <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="11.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />
     <PackageReference Include="SequentialGuid" Version="5.0.7" />
     <PackageReference Include="Ulid" Version="1.4.1" />
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Auth\" />
+    <Folder Include="Auth\Commands\" />
+    <Folder Include="Auth\DTOs\" />
+    <Folder Include="Auth\Services\" />
     <Folder Include="Behaviors\" />
     <Folder Include="Common\" />
     <Folder Include="Common\Caching\" />
+    <Folder Include="Common\Helpers\" />
     <Folder Include="Customers\Commands\" />
     <Folder Include="Customers\DTOs\" />
     <Folder Include="Customers\Queries\" />
@@ -31,6 +38,9 @@
     <Folder Include="Revenue\" />
     <Folder Include="Shared\" />
     <Folder Include="UnitOfWork\" />
+    <Folder Include="User\" />
+    <Folder Include="User\Commands\" />
+    <Folder Include="User\DTOs\" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,8 +1,12 @@
 using System.Reflection;
+using System.Text;
 using FluentValidation;
 using KafkaFlow;
 using KafkaFlow.Serializer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
 using WebAppExam.Application.Behaviors;
 using WebAppExam.Application.Common.Caching;
@@ -80,9 +84,35 @@ builder.Services.AddScoped<IRevenueRepository, RevenueRepository>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        };
+    });
+
+// Add authorization services
+builder.Services.AddAuthorization(options =>
+    {
+        options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+
 builder.Services.AddControllers();
 
 var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseExceptionHandler();
 var kafkaBus = app.Services.CreateKafkaBus();
 await kafkaBus.StartAsync();
