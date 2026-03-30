@@ -7,7 +7,7 @@ namespace WebAppExam.Infrastructure.Repositories;
 
 public class MongoLogRepository : ILogRepository
 {
-    private readonly IMongoCollection<LogEntry> _logsCollection;
+    private readonly IMongoCollection<AuditLogEntry> _logsCollection;
 
     public MongoLogRepository(IConfiguration configuration)
     {
@@ -18,11 +18,11 @@ public class MongoLogRepository : ILogRepository
         var mongoClient = new MongoClient(connectionString);
         var mongoDatabase = mongoClient.GetDatabase(databaseName);
 
-        _logsCollection = mongoDatabase.GetCollection<LogEntry>("Logs");
+        _logsCollection = mongoDatabase.GetCollection<AuditLogEntry>("Logs");
     }
 
-    public async Task AddAsync(LogEntry logEntry)
+    public async Task AddAuditLogEntryAsync(AuditLogEntry auditEntry)
     {
-        await _logsCollection.InsertOneAsync(logEntry);
+        await _logsCollection.InsertOneAsync(auditEntry);
     }
 }

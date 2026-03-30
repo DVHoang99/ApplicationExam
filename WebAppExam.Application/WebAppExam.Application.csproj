@@ -37,6 +37,7 @@
     <Folder Include="Products\DTOs\" />
     <Folder Include="Products\Queries\" />
     <Folder Include="Revenue\" />
+    <Folder Include="Services\" />
     <Folder Include="Shared\" />
     <Folder Include="UnitOfWork\" />
     <Folder Include="User\" />

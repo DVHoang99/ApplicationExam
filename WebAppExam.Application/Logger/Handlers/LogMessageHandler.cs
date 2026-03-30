@@ -6,7 +6,7 @@ using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Logger.Handlers;
 
-public class LogMessageHandler : IMessageHandler<LogMessageDTO>
+public class LogMessageHandler : IMessageHandler<AuditLogMessageDTO>
 {
     private readonly ILogRepository _logRepository;
 
@@ -15,21 +15,22 @@ public class LogMessageHandler : IMessageHandler<LogMessageDTO>
         _logRepository = logRepository;
     }
 
-    public async Task Handle(IMessageContext context, LogMessageDTO messageDto)
+    public async Task Handle(IMessageContext context, AuditLogMessageDTO messageDto)
     {
         try
         {
-            Console.WriteLine($"[KAFKA] logged: {messageDto.Level} - {messageDto.Message}");
+            Console.WriteLine($"[KAFKA AUDIT] Captured: {messageDto.Action} on {messageDto.EntityName} (ID: {messageDto.PrimaryKey}) by {messageDto.ChangedBy}");
 
-            var logEntry = new LogEntry(
-                messageDto.Level,
-                messageDto.ServiceName,
-                messageDto.Message,
-                messageDto.Exception);
+            var auditEntry = new AuditLogEntry(
+                messageDto.EntityName,
+                messageDto.Action,
+                messageDto.PrimaryKey,
+                messageDto.OldValues,
+                messageDto.NewValues,
+                messageDto.ChangedBy ?? "System"
+            );
 
-            await _logRepository.AddAsync(logEntry);
-
-            Console.WriteLine("[MONGO] Logged to database!");
+            await _logRepository.AddAuditLogEntryAsync(auditEntry);
         }
         catch (Exception ex)
         {

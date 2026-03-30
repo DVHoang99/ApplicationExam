@@ -19,7 +19,7 @@ public class CustomerRepository : Repository<Customer>, ICustomerRepository
 
     public async Task<Customer?> GetCustomerByEmailAsync(string email)
     {
-        return await _context.Customers.FirstOrDefaultAsync(x => x.Email == email);
+        return await _context.Customers.FirstOrDefaultAsync(x => x.Email == email && x.DeletedAt == null);
     }
 
     public async Task<List<Customer>> FindAsync(Expression<Func<Customer, bool>> predicate, CancellationToken cancellationToken = default)

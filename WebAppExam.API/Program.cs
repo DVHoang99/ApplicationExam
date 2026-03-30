@@ -10,11 +10,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
 using WebAppExam.API.Middlewares;
+using WebAppExam.API.Services;
 using WebAppExam.Application.Auth.Services;
 using WebAppExam.Application.Behaviors;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Logger.Handlers;
 using WebAppExam.Application.Revenue;
+using WebAppExam.Application.Services;
 using WebAppExam.Domain.Repository;
 using WebAppExam.Infrastructure.Common.Caching;
 using WebAppExam.Infrastructure.Exceptions;
@@ -102,6 +104,9 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
 builder.Services.AddScoped<IRevenueRepository, RevenueRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddSingleton<ILogRepository, MongoLogRepository>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -135,7 +140,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddControllers();
 
 var app = builder.Build();
-app.UseMiddleware<RequestLoggingMiddleware>();
+//app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseExceptionHandler();
 app.UseRouting();
 app.UseAuthentication();

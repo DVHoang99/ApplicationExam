@@ -5,5 +5,7 @@ namespace WebAppExam.Domain.Repository;
 
 public interface ILogRepository
 {
-    Task AddAsync(LogEntry logEntry);
+    Task AddAuditLogEntryAsync(AuditLogEntry auditEntry);
 }
+
+
