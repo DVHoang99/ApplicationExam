@@ -1,10 +1,8 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using WebAppExam.Application.User.Commands;
 using WebAppExam.Application.User.DTOs;
-using WebAppExam.Application.User.Queries;
 
 namespace WebAppExam.API.Controller
 {

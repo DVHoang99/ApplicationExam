@@ -39,7 +39,12 @@ public class OrdersController : ControllerBase
         return Ok(id);
     }
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] string customerName = "")
+    public async Task<IActionResult> GetAll(
+        [FromQuery] DateTime? fromDate,
+        [FromQuery] DateTime? toDate,
+        [FromQuery] string customerName = "", 
+        [FromQuery] string phoneNumber = ""
+        )
     {
         var query = new GetAllOrdersQuery(customerName);
         var result = await _mediator.Send(query);

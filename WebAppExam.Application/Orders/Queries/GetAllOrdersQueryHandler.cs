@@ -7,16 +7,32 @@ namespace WebAppExam.Application.Orders.Queries;
 
 public class GetAllOrdersQueryHandler : IRequestHandler<GetAllOrdersQuery, List<OrderDto>>
 {
-    private readonly IOrderRepository _repo;
+    private readonly IOrderRepository _orderRepository;
 
-    public GetAllOrdersQueryHandler(IOrderRepository repo)
+    public GetAllOrdersQueryHandler(IOrderRepository orderRepository)
     {
-        _repo = repo;
+        _orderRepository = orderRepository;
     }
 
     public async Task<List<OrderDto>> Handle(GetAllOrdersQuery request, CancellationToken cancellationToken)
     {
-        var orders = await _repo.GetAllAsync(cancellationToken);
+        var query = _orderRepository.Query();
+
+        if(request.FromDate != null && request.ToDate != null)
+        {
+            query = _orderRepository.GetOrdersByDateQuery(query, request.FromDate, request.ToDate);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.CustomerName))
+        {
+            query = _orderRepository.GetCustomerByCustomerNameQuery(query, request.CustomerName);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
+        {
+            query = _orderRepository.GetCustomerByPhoneNumberQuery(query, request.PhoneNumber);
+        }
+
 
         return orders.Count == 0 ? new List<OrderDto>() : orders.Select(order => new OrderDto
         {
