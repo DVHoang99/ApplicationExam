@@ -18,7 +18,7 @@ public class GetAllOrdersQueryHandler : IRequestHandler<GetAllOrdersQuery, List<
     {
         var orders = await _repo.GetAllAsync(cancellationToken);
 
-        return orders.Select(order => new OrderDto
+        return orders.Count == 0 ? new List<OrderDto>() : orders.Select(order => new OrderDto
         {
             Id = order.Id,
             CustomerId = order.CustomerId,

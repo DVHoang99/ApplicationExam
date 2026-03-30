@@ -1,26 +1,39 @@
 using System;
 using MediatR;
+using Microsoft.AspNetCore.DataProtection.KeyManagement.Internal;
+using WebAppExam.Application.Common.Caching;
 using WebAppExam.Domain;
+using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Customers.Queries;
 
 public class GetCustomerByIdQueryHandler : IRequestHandler<GetCustomerByIdQuery, Customer>
 {
-    
-    private readonly IUnitOfWork _uow;
+    private readonly ICustomerRepository _customerRepository;
+    private readonly ICacheService _cacheService;
 
-    public GetCustomerByIdQueryHandler(IUnitOfWork uow)
+
+    public GetCustomerByIdQueryHandler(ICustomerRepository customerRepository, ICacheService cacheService)
     {
-        _uow = uow;
+        _cacheService = cacheService;
+        _customerRepository = customerRepository;
     }
-
     public async Task<Customer> Handle(GetCustomerByIdQuery request, CancellationToken ct)
     {
-        var customer = await _uow.Customers.GetByIdAsync(request.id, ct);
 
-        if (customer == null)
-            throw new Exception("Customer not found");
+        var customer = await _cacheService.GetAsync($"customer_detail:{request.Id}", async () =>
+        {
+            var customer = await _customerRepository.GetByIdAsync(request.Id, ct);
 
-        return customer;
+            if (customer == null)
+            {
+                var failure = new FluentValidation.Results.ValidationFailure("Customer", "Customer not found");
+                throw new FluentValidation.ValidationException(new[] { failure });
+            }
+            return customer;
+        },TimeSpan.FromDays(1), ct);
+
+
+        return customer ?? new Customer();
     }
 }

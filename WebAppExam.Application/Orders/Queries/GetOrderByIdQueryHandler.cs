@@ -7,12 +7,12 @@ using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Orders.Queries;
 
-public class GetOrderByIdHandler : IRequestHandler<GetOrderByIdQuery, OrderDto>
+public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, OrderDto>
 {
     private readonly IOrderRepository _repo;
     private readonly ICacheService _cacheService;
 
-    public GetOrderByIdHandler(IOrderRepository repo, ICacheService cacheService)
+    public GetOrderByIdQueryHandler(IOrderRepository repo, ICacheService cacheService)
     {
         _repo = repo;
         _cacheService = cacheService;
@@ -25,7 +25,10 @@ public class GetOrderByIdHandler : IRequestHandler<GetOrderByIdQuery, OrderDto>
             var order = await _repo.GetByIdAsync(request.Id, cancellationToken);
 
             if (order == null)
-                throw new Exception("Order not found");
+            {
+                var failure = new FluentValidation.Results.ValidationFailure("Order", "Order not found.");
+                throw new FluentValidation.ValidationException(new[] { failure });
+            }
 
             var details = order.Details.Select(x => new OrderDetailDto
             {
@@ -47,7 +50,7 @@ public class GetOrderByIdHandler : IRequestHandler<GetOrderByIdQuery, OrderDto>
                 Details = details
             };
             return res;
-        }, TimeSpan.FromMinutes(5), cancellationToken);
+        }, TimeSpan.FromDays(1), cancellationToken);
 
         return orderDTO == null ? new OrderDto() : orderDTO;
     }

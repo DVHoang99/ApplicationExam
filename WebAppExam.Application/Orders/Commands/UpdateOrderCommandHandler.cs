@@ -25,7 +25,8 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
         var order = await _orderRepository.GetByIdAsync(request.Id, ct);
         if (order == null)
         {
-            throw new Exception("Order not found");
+            var failure = new FluentValidation.Results.ValidationFailure("Order", "Order not found");
+            throw new FluentValidation.ValidationException(new[] { failure });
         }
             
         order.UpdateOrderGeneralInformation(request.CustomerId, request.CustomerName, request.Address, request.PhoneNumber);

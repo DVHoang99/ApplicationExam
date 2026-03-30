@@ -33,7 +33,7 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Uli
 
         if (customerExists == null)
         {
-            var failure = new FluentValidation.Results.ValidationFailure("CustomerId", "Customer not found.");
+            var failure = new FluentValidation.Results.ValidationFailure("Customer", "Customer not found.");
             throw new FluentValidation.ValidationException(new[] { failure });
         }
 
@@ -44,7 +44,10 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Uli
         foreach (var item in request.Items)
         {
             if (!products.ContainsKey(item.ProductId))
-                continue;
+            {
+                var failure = new FluentValidation.Results.ValidationFailure("Product", $"ProductId {item.ProductId} not found.");
+                throw new FluentValidation.ValidationException(new[] { failure });
+            }
 
             var product = products[item.ProductId];
 
