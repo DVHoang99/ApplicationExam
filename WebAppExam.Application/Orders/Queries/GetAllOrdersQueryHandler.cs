@@ -20,21 +20,22 @@ public class GetAllOrdersQueryHandler : IRequestHandler<GetAllOrdersQuery, List<
 
         if(request.FromDate != null && request.ToDate != null)
         {
-            query = _orderRepository.GetOrdersByDateQuery(query, request.FromDate, request.ToDate);
+            query = _orderRepository.GetOrderFromDateToDateAsync(query, request.FromDate.Value, request.ToDate.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(request.CustomerName))
         {
-            query = _orderRepository.GetCustomerByCustomerNameQuery(query, request.CustomerName);
+            query = _orderRepository.GetOrderByCustomerNameQuery(query, request.CustomerName);
         }
 
         if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
         {
-            query = _orderRepository.GetCustomerByPhoneNumberQuery(query, request.PhoneNumber);
+            query = _orderRepository.GetOrderByPhoneNumberQuery(query, request.PhoneNumber);
         }
 
+        var maps = await _orderRepository.ToListAsync(query, cancellationToken);
 
-        return orders.Count == 0 ? new List<OrderDto>() : orders.Select(order => new OrderDto
+        return maps.Select(order => new OrderDto
         {
             Id = order.Id,
             CustomerId = order.CustomerId,

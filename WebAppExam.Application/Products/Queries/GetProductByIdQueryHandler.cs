@@ -21,7 +21,7 @@ public class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, P
 
     public async Task<ProductDTO> Handle(GetProductByIdQuery request, CancellationToken ct)
     {
-        var product = await _cacheService.GetAsync($"product_detail:{request.Id}", async () =>
+        var product = await _cacheService.GetAsync($"product_detail:{request.ProductId}", async () =>
         {
             var res = await _productRepository.GetByIdAsync(request.ProductId, ct);
 

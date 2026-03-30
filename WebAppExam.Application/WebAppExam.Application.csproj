@@ -41,7 +41,6 @@
     <Folder Include="Services\" />
     <Folder Include="Shared\" />
     <Folder Include="UnitOfWork\" />
-    <Folder Include="User\Commands\" />
     <Folder Include="User\DTOs\" />
   </ItemGroup>
 

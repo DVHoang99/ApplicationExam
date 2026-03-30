@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppExam.Application.User.Commands;
 using WebAppExam.Application.User.DTOs;
+using WebAppExam.Application.User.Queries;
 
 namespace WebAppExam.API.Controller
 {
@@ -32,19 +33,19 @@ namespace WebAppExam.API.Controller
             return Ok(result);
         }
 
-        // [HttpPut("{id}")]
-        // [Authorize(Roles = "Admin")]
-        // public async Task<IActionResult> Update(Ulid id, [FromBody] UpdateUserDTO request)
-        // {
-        //     var command = new UpdateUserCommand(id)
-        //     {
-        //         Name = request.Name,
-        //         Role = request.Role
-        //     };
-        //     var result = await _mediator.Send(command);
-        //     return Ok(result);
-        // }
-
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update([FromBody] UpdateUserDTO request)
+        {
+            var command = new UpdateUserCommand(request.Username)
+            {
+                Name = request.Name,
+                Role = request.Role,
+                Password = request.Password
+            };
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+        //
         // [HttpGet]
         // [Authorize(Roles = "Admin")]
         // public async Task<IActionResult> GetAll()
@@ -54,25 +55,25 @@ namespace WebAppExam.API.Controller
         //     return Ok(result);
         // }
 
-        // [HttpGet("{id}")]
-        // public async Task<IActionResult> GetById(Ulid id)
-        // {
-        //     var query = new GetUserByIdQuery(id);
-        //     var result = await _mediator.Send(query);
-        //     if (result == null)
-        //     {
-        //         return NotFound();
-        //     }
-        //     return Ok(result);
-        // }
+        [HttpGet("{username}")]
+        public async Task<IActionResult> GetById(string username)
+        {
+            var query = new GetUserByUsernameQuery(username);
+            var result = await _mediator.Send(query);
+            if (result == null)
+            {
+                return NotFound();
+            }
+            return Ok(result);
+        }
 
-        // [HttpDelete("{id}")]
-        // [Authorize(Roles = "Admin")]
-        // public async Task<IActionResult> Delete(Ulid id)
-        // {
-        //     var command = new DeleteUserCommand(id);
-        //     await _mediator.Send(command);
-        //     return NoContent();
-        // }
+        [HttpDelete("{username}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Delete(string username)
+        {
+            var command = new DeleteUserCommand(username);
+            await _mediator.Send(command);
+            return NoContent();
+        }
     }
 }

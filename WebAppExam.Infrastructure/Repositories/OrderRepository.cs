@@ -33,7 +33,7 @@ public class OrderRepository : Repository<Order>, IOrderRepository
         return await _dbSet
             .Include(o => o.Details)
             .FirstOrDefaultAsync(o => o.Id == id
-            && o.DeletedAt == null, cancellationToken);
+                                      && o.DeletedAt == null, cancellationToken);
     }
 
     public new async Task<List<Order>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -51,5 +51,28 @@ public class OrderRepository : Repository<Order>, IOrderRepository
             .Include(o => o.Details)
             .Where(o => o.CreatedAt.Date == date.Date && o.DeletedAt == null)
             .ToListAsync();
+    }
+
+    public IQueryable<Order> GetOrderFromDateToDateAsync(IQueryable<Order> query, DateTime fromDate, DateTime toDate)
+    {
+        return query.Where(o => o.CreatedAt.Date >= fromDate.Date && o.CreatedAt.Date <= toDate.Date);
+    }
+
+    public IQueryable<Order> GetOrderByPhoneNumberQuery(IQueryable<Order> query, string searchTerm)
+    {
+        return query.Where(o => o.PhoneNumber.Contains(searchTerm));
+    }
+
+    public IQueryable<Order> GetOrderByCustomerNameQuery(IQueryable<Order> query, string searchTerm)
+    {
+        return query.Where(o => o.CustomerName.Contains(searchTerm));
+    }
+
+    public async Task<IEnumerable<Order>> ToListAsync(IQueryable<Order> query, CancellationToken cancellationToken = default)
+    {
+        return await query
+            .Include(o => o.Details)
+            .Where(o => o.DeletedAt == null)
+            .ToListAsync(cancellationToken);
     }
 }

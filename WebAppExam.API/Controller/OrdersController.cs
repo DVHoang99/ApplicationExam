@@ -46,7 +46,7 @@ public class OrdersController : ControllerBase
         [FromQuery] string phoneNumber = ""
         )
     {
-        var query = new GetAllOrdersQuery(customerName);
+        var query = new GetAllOrdersQuery(fromDate, toDate, customerName, phoneNumber);
         var result = await _mediator.Send(query);
         return Ok(result);
     }

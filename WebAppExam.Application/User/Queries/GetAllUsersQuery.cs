@@ -5,5 +5,6 @@ namespace WebAppExam.Application.User.Queries
 {
     public class GetAllUsersQuery : IRequest<List<UserResponseDTO>>
     {
+        
     }
 }

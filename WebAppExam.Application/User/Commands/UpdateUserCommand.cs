@@ -4,15 +4,12 @@ using WebAppExam.Application.Shared;
 
 namespace WebAppExam.Application.User.Commands
 {
-    public class UpdateUserCommand : ICommand<Ulid>
+    public class UpdateUserCommand(string username) : ICommand<Ulid>
     {
-        public Ulid Id { get; }
+        public string Username { get; } = username;
         public string Name { get; set; }
         public string Role { get; set; }
-
-        public UpdateUserCommand(Ulid id)
-        {
-            Id = id;
-        }
+        public string Password { get; set; }
+        
     }
 }
