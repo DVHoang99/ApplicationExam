@@ -1,6 +1,8 @@
 using System;
+using KafkaFlow.Producers;
 using MediatR;
 using WebAppExam.Application.Common.Caching;
+using WebAppExam.Application.Orders.Events;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Orders.Commands;
@@ -10,13 +12,14 @@ public class DeleteOrderCommandHandler : IRequestHandler<DeleteOrderCommand, Uli
     private readonly IOrderRepository _orderRepository;
     private readonly IProductRepository _productRepository;
     private readonly ICacheService _cacheService;
+    private readonly IProducerAccessor _producerAccessor;
 
-
-    public DeleteOrderCommandHandler(IOrderRepository orderRepository, ICacheService cacheService, IProductRepository productRepository)
+    public DeleteOrderCommandHandler(IOrderRepository orderRepository, ICacheService cacheService, IProductRepository productRepository, IProducerAccessor producerAccessor)
     {
         _orderRepository = orderRepository;
         _cacheService = cacheService;
         _productRepository = productRepository;
+        _producerAccessor = producerAccessor;
     }
 
     public async Task<Ulid> Handle(DeleteOrderCommand request, CancellationToken cancellationToken)
@@ -43,6 +46,13 @@ public class DeleteOrderCommandHandler : IRequestHandler<DeleteOrderCommand, Uli
 
         _orderRepository.Update(order);
         _productRepository.UpdateRange(products.Values.ToList());
+
+        var producer = _producerAccessor.GetProducer("order-events-producer");
+
+        await producer.ProduceAsync(
+            order.Id.ToString(),
+            new OrderCreatedIntegrationEvent(order.Id, -order.TotalAmount, DateTime.UtcNow, -1)
+        );
 
         await _cacheService.RemoveByPrefixAsync($"order_detail:{request.Id}");
         return order.Id;

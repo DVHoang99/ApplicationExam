@@ -1,0 +1,9 @@
+using System;
+using WebAppExam.Application.Products.DTOs;
+
+namespace WebAppExam.Application.Products.Services;
+
+public interface IWareHouseService
+{
+    Task<WareHouseDTO?> GetWareHouseAsync(string WareHouseId, CancellationToken cancellationToken = default);
+}

@@ -15,6 +15,7 @@ using WebAppExam.Application.Auth.Services;
 using WebAppExam.Application.Behaviors;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Logger.Handlers;
+using WebAppExam.Application.Products.Services;
 using WebAppExam.Application.Revenue;
 using WebAppExam.Application.Services;
 using WebAppExam.Domain.Repository;
@@ -23,6 +24,7 @@ using WebAppExam.Infrastructure.Exceptions;
 using WebAppExam.Infrastructure.Jobs;
 using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
 using WebAppExam.Infrastructure.Repositories;
+using WebAppExam.Infrastructure.Services;
 using WebAppExam.Infrastructure.UnitOfWork;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -150,6 +152,12 @@ builder.Services.AddHangfireServer();
 
 builder.Services.AddControllers();
 
+builder.Services.AddHttpClient<IWareHouseService, WarehouseInternalClient>(client =>
+{
+    client.BaseAddress = new Uri("http://localhost:5134/");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+});
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -160,7 +168,7 @@ using (var scope = app.Services.CreateScope())
     recurringJobManager.AddOrUpdate<RevenueBackgroundJob>(
         "daily-revenue-calculation",
         job => job.RunDailyCalculation(),
-        "0 10 * * *",
+        "5 4 * * *",
         new RecurringJobOptions
         {
             TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")

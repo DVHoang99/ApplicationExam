@@ -68,7 +68,7 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Uli
 
         await producer.ProduceAsync(
             order.Id.ToString(),
-            new OrderCreatedIntegrationEvent(order.Id, order.TotalAmount, DateTime.UtcNow)
+            new OrderCreatedIntegrationEvent(order.Id, order.TotalAmount, DateTime.UtcNow, 1)
         );
         return order.Id;
     }

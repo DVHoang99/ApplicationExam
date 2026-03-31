@@ -15,7 +15,7 @@ public class RevenueRepository : IRevenueRepository
         _dbContext = dbContext;
     }
 
-    public async Task UpsertMonthlyRevenueAsync(DateTime occurredOn, decimal amount, CancellationToken cancellationToken = default)
+    public async Task UpsertMonthlyRevenueAsync(DateTime occurredOn, decimal amount, int counter, CancellationToken cancellationToken = default)
     {
         var monthYear = occurredOn.ToString("yyyy-MM");
 
@@ -23,11 +23,12 @@ public class RevenueRepository : IRevenueRepository
             INSERT INTO ""monthly_revenues"" (""MonthYear"", ""TotalOrders"", ""TotalRevenue"")
             VALUES (@monthYear, 1, @amount)
             ON CONFLICT (""MonthYear"") DO UPDATE SET 
-                ""TotalOrders"" = ""monthly_revenues"".""TotalOrders"" + 1,
+                ""TotalOrders"" = ""monthly_revenues"".""TotalOrders"" + @counter,
                 ""TotalRevenue"" = ""monthly_revenues"".""TotalRevenue"" + @amount;";
 
         await _dbContext.Database.ExecuteSqlRawAsync(sql,
             new NpgsqlParameter("@monthYear", monthYear),
-            new NpgsqlParameter("@amount", amount));
+            new NpgsqlParameter("@amount", amount), 
+            new NpgsqlParameter("@counter", counter));
     }
 }

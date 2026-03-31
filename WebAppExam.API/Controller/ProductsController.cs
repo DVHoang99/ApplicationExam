@@ -29,7 +29,8 @@ namespace WebAppExam.API.Controller
                 Inventories = product.Inventories.Select(x => new InventoryDTO
                 {
                     Stock = x.Stock,
-                    Name = x.Name
+                    Name = x.Name,
+                    WareHouseId = x.WareHouseId
                 }).ToList()
             };
 

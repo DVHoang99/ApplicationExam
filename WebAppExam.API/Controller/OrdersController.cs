@@ -69,7 +69,8 @@ public class OrdersController : ControllerBase
             Items = input.Details.Select(x => new OrderItemDto
             {
                 ProductId = x.ProductId,
-                Quantity = x.Quantity
+                Quantity = x.Quantity,
+                InventoryId = x.InventoryId
             }).ToList()
         };
 
