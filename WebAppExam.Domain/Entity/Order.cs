@@ -28,7 +28,7 @@ namespace WebAppExam.Domain
 
         public void AddOrUpdateItem(Ulid productId, int unitPrice, int quantity, Ulid inventoryId)
         {
-            var existingItem = _details.SingleOrDefault(x => x.ProductId == productId);
+            var existingItem = _details.SingleOrDefault(x => x.ProductId == productId && x.InventoryId == inventoryId);
 
             if (existingItem != null)
             {
@@ -60,6 +60,12 @@ namespace WebAppExam.Domain
             CustomerName = customerName;
             PhoneNumber = phoneNumber;
             CustomerId = customerId;
+        }
+
+        public void DeleteOrder()
+        {
+            DeletedAt = DateTime.UtcNow;
+            UpdatedAt = DateTime.UtcNow;
         }
     }
 }

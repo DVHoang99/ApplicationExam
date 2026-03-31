@@ -28,7 +28,7 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
             var failure = new FluentValidation.Results.ValidationFailure("Order", "Order not found");
             throw new FluentValidation.ValidationException(new[] { failure });
         }
-            
+
         order.UpdateOrderGeneralInformation(request.CustomerId, request.CustomerName, request.Address, request.PhoneNumber);
 
         order.CustomerId = request.CustomerId;
@@ -50,9 +50,11 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
 
 
             order.AddOrUpdateItem(item.ProductId, product.Price, item.Quantity, inventoryId);
+            product.AddOrUpdateInventory(inventoryId, -item.Quantity, product.Id, inventory.Name);
         }
 
         _orderRepository.Update(order);
+        _productRepository.UpdateRange(products.Values.ToList());
 
         await _cacheService.RemoveByPrefixAsync($"order_detail:{request.Id}");
         return order.Id;

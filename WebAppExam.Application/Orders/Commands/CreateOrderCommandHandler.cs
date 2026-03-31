@@ -1,4 +1,5 @@
 using System.Reflection.Metadata;
+using Confluent.Kafka;
 using KafkaFlow.Producers;
 using MediatR;
 using WebAppExam.Application.Orders.Events;
@@ -37,7 +38,7 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Uli
             throw new FluentValidation.ValidationException(new[] { failure });
         }
 
-        var order = new Order(request.CustomerId, request.Address, request.Address, request.PhoneNumber);
+        var order = new Order(request.CustomerId, request.Address, request.CustomerName, request.PhoneNumber);
 
         var products = await _productRepository.GetProductByIdsAsync(request.Items.Select(x => x.ProductId).ToList(), ct);
 
@@ -56,9 +57,12 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Uli
             var inventoryId = inventory == null ? item.InventoryId : inventory.Id;
 
             order.AddOrUpdateItem(item.ProductId, product.Price, item.Quantity, inventoryId);
+            product.AddOrUpdateInventory(inventoryId, -item.Quantity, product.Id, inventory.Name);
         }
 
         await _orderRepository.AddAsync(order, ct);
+
+        _productRepository.UpdateRange(products.Values.ToList());
 
         var producer = _producerAccessor.GetProducer("order-events-producer");
 

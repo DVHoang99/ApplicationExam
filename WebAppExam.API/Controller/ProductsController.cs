@@ -19,7 +19,6 @@ namespace WebAppExam.API.Controller
             _mediator = mediator;
         }
         [HttpPost]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] ProductDTO product)
         {
             var command = new CreateProductCommand
@@ -56,7 +55,6 @@ namespace WebAppExam.API.Controller
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(Ulid id, [FromBody] ProductDTO input)
         {
             var command = new UpdateProductCommand(id)

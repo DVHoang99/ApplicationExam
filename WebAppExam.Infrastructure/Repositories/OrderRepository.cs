@@ -55,17 +55,22 @@ public class OrderRepository : Repository<Order>, IOrderRepository
 
     public IQueryable<Order> GetOrderFromDateToDateAsync(IQueryable<Order> query, DateTime fromDate, DateTime toDate)
     {
-        return query.Where(o => o.CreatedAt.Date >= fromDate.Date && o.CreatedAt.Date <= toDate.Date);
+        return query.Where(o => o.CreatedAt >= fromDate && o.CreatedAt <= toDate);
     }
 
     public IQueryable<Order> GetOrderByPhoneNumberQuery(IQueryable<Order> query, string searchTerm)
     {
-        return query.Where(o => o.PhoneNumber.Contains(searchTerm));
+        return query.Where(x => EF.Functions.ILike(
+            x.PhoneNumber, $"%{searchTerm}%"
+            ));
     }
 
     public IQueryable<Order> GetOrderByCustomerNameQuery(IQueryable<Order> query, string searchTerm)
     {
-        return query.Where(o => o.CustomerName.Contains(searchTerm));
+        return query.Where(x => EF.Functions.ILike(
+            AppDbContext.FUnaccent(x.CustomerName),
+            AppDbContext.FUnaccent($"%{searchTerm}%")
+        ));
     }
 
     public async Task<IEnumerable<Order>> ToListAsync(IQueryable<Order> query, CancellationToken cancellationToken = default)

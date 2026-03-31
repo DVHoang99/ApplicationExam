@@ -47,6 +47,7 @@ public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, Order
                 CustomerName = order.CustomerName,
                 Address = order.Address,
                 PhoneNumber = order.PhoneNumber,
+                CreatedAt = order.CreatedAt,
                 Details = details
             };
             return res;

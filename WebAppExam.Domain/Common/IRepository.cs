@@ -19,6 +19,7 @@ namespace WebAppExam.Domain.Common
         Task AddAsync(T entity, CancellationToken cancellationToken = default);
 
         void Update(T entity);
+        void UpdateRange(List<T> entities);
 
         void Remove(T entity);
 

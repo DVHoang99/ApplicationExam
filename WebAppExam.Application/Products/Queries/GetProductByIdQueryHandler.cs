@@ -21,31 +21,26 @@ public class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, P
 
     public async Task<ProductDTO> Handle(GetProductByIdQuery request, CancellationToken ct)
     {
-        var product = await _cacheService.GetAsync($"product_detail:{request.ProductId}", async () =>
+        var res = await _productRepository.GetByIdAsync(request.ProductId, ct);
+
+        if (res == null)
         {
-            var res = await _productRepository.GetByIdAsync(request.ProductId, ct);
+            var failure = new FluentValidation.Results.ValidationFailure("Product", "Product not found");
+            throw new FluentValidation.ValidationException(new[] { failure });
+        }
 
-            if (res == null)
+        return new ProductDTO
+        {
+            Id = res.Id,
+            Name = res.Name,
+            Description = res.Description,
+            Price = res.Price,
+            Inventories = res.Inventories.Select(x => new InventoryDTO
             {
-                var failure = new FluentValidation.Results.ValidationFailure("Product", "Product not found");
-                throw new FluentValidation.ValidationException(new[] { failure });
-            }
-
-            return new ProductDTO
-            {
-                Id = res.Id,
-                Name = res.Name,
-                Description = res.Description,
-                Price = res.Price,
-                Inventories = res.Inventories.Select(x => new InventoryDTO
-                {
-                    Id = x.Id,
-                    Stock = x.Stock,
-                    Name = x.Name
-                }).ToList()
-            };
-        }, TimeSpan.FromDays(1), ct);
-
-        return product ?? new ProductDTO();
+                Id = x.Id,
+                Stock = x.Stock,
+                Name = x.Name
+            }).ToList()
+        };
     }
 }

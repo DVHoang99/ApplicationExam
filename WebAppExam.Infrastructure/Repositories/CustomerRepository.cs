@@ -30,8 +30,8 @@ public class CustomerRepository : Repository<Customer>, ICustomerRepository
     public IQueryable<Customer> GetCustomerByPhoneNumberQuery(IQueryable<Customer> query, string searchTerm)
     {
         return query.Where(x => EF.Functions.ILike(
-            AppDbContext.FUnaccent(x.PhoneNumber),
-            AppDbContext.FUnaccent($"%{searchTerm}%")
+            x.PhoneNumber,
+            $"%{searchTerm}%"
         ));
     }
     public IQueryable<Customer> GetCustomerByCustomerNameQuery(IQueryable<Customer> query, string searchTerm)

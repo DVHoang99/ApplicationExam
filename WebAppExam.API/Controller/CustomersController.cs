@@ -20,7 +20,6 @@ namespace WebAppExam.API.Controller
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] CustomerDTO input)
         {
             var command = new CreateCustomerCommand
@@ -53,7 +52,6 @@ namespace WebAppExam.API.Controller
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(Ulid id, [FromBody] CustomerDTO input)
         {
             var command = new UpdateCustomerCommand(id)

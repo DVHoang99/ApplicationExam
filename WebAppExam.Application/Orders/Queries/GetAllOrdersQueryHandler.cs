@@ -18,7 +18,7 @@ public class GetAllOrdersQueryHandler : IRequestHandler<GetAllOrdersQuery, List<
     {
         var query = _orderRepository.Query();
 
-        if(request.FromDate != null && request.ToDate != null)
+        if (request.FromDate != null && request.ToDate != null)
         {
             query = _orderRepository.GetOrderFromDateToDateAsync(query, request.FromDate.Value, request.ToDate.Value);
         }
@@ -44,6 +44,7 @@ public class GetAllOrdersQueryHandler : IRequestHandler<GetAllOrdersQuery, List<
             CustomerName = order.CustomerName,
             Address = order.Address,
             PhoneNumber = order.PhoneNumber,
+            CreatedAt = order.CreatedAt,
             Details = order.Details.Select(x => new OrderDetailDto
             {
                 ProductId = x.ProductId,

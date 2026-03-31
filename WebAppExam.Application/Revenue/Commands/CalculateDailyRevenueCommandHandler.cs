@@ -33,8 +33,6 @@ public class CalculateDailyRevenueCommandHandler : IRequestHandler<CalculateDail
 
         await _dailyRevenueRepository.AddAsync(dailyTotal);
 
-        Console.WriteLine("Successfully calculated revenue for {Date}: {Amount}", today, dailyTotal);
-
         return Unit.Value;
     }
 }
