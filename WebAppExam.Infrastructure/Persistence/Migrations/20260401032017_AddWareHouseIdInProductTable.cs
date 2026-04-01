@@ -1,0 +1,30 @@
+﻿using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace WebAppExam.Infrastructure.Persistence.Migrations
+{
+    /// <inheritdoc />
+    public partial class AddWareHouseIdInProductTable : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AddColumn<string>(
+                name: "WareHouseId",
+                table: "products",
+                type: "character varying(40)",
+                maxLength: 40,
+                nullable: false,
+                defaultValue: "");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropColumn(
+                name: "WareHouseId",
+                table: "products");
+        }
+    }
+}

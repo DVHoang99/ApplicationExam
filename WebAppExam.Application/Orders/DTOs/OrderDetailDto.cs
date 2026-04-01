@@ -7,7 +7,7 @@ public class OrderDetailDto
     public int Quantity { get; set; }
 
     public decimal Price { get; set; }
-    public Ulid InventoryId { get; set; }
+    public Ulid WareHouseId { get; set; }
 
     public decimal SubTotal => Quantity * Price;
 }

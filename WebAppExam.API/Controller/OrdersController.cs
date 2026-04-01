@@ -30,7 +30,7 @@ public class OrdersController : ControllerBase
             {
                 ProductId = x.ProductId,
                 Quantity = x.Quantity,
-                InventoryId = x.InventoryId
+                WareHouseId = x.WareHouseId
             }).ToList()
         };
         var id = await _mediator.Send(command);
@@ -70,7 +70,7 @@ public class OrdersController : ControllerBase
             {
                 ProductId = x.ProductId,
                 Quantity = x.Quantity,
-                InventoryId = x.InventoryId
+                //InventoryId = x.InventoryId
             }).ToList()
         };
 

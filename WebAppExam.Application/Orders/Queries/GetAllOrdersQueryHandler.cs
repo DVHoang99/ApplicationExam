@@ -50,7 +50,7 @@ public class GetAllOrdersQueryHandler : IRequestHandler<GetAllOrdersQuery, List<
                 ProductId = x.ProductId,
                 Quantity = x.Quantity,
                 Price = x.Price,
-                InventoryId = x.InventoryId
+                //InventoryId = x.InventoryId
             }).ToList()
         }).ToList();
     }

@@ -40,8 +40,8 @@ public class DeleteOrderCommandHandler : IRequestHandler<DeleteOrderCommand, Uli
         foreach (var item in order.Details)
         {
             var product = products[item.ProductId];
-            var inventory = product.Inventories.FirstOrDefault(x => x.Id == item.InventoryId);
-            product.AddOrUpdateInventory(item.InventoryId, item.Quantity, product.Id, inventory.Name);
+            //var inventory = product.Inventories.FirstOrDefault(x => x.Id == item.InventoryId);
+            //product.AddOrUpdateInventory(item.InventoryId, item.Quantity, product.Id, inventory.Name);
         }
 
         _orderRepository.Update(order);

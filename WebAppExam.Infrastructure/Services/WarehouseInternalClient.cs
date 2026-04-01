@@ -22,7 +22,7 @@ public class WarehouseInternalClient : IWareHouseService
     {
         //var secretKey = _config["InternalSettings:WarehouseSecretKey"];
 
-        var path = $"api/warehouses/{WareHouseId}"; // Kiểm tra lại plural (warehouse hay warehouses)
+        var path = $"api/warehouses/{WareHouseId}";
 
         var response = await _httpClient.GetAsync(path, cancellationToken);
         // var request = new HttpRequestMessage(HttpMethod.Get, $"api/warehouse/{WareHouseId}");

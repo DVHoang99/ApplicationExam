@@ -3,6 +3,7 @@ using Confluent.Kafka;
 using MediatR;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Products.DTOs;
+using WebAppExam.Application.Products.Services;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Products.Queries;
@@ -10,13 +11,13 @@ namespace WebAppExam.Application.Products.Queries;
 public class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, ProductDTO>
 {
     private readonly IProductRepository _productRepository;
-    private readonly ICacheService _cacheService;
+    private readonly IInventoryService _inventoryService;
 
 
-    public GetProductByIdQueryHandler(IProductRepository productRepository, ICacheService cacheService)
+    public GetProductByIdQueryHandler(IProductRepository productRepository, IInventoryService inventoryService)
     {
         _productRepository = productRepository;
-        _cacheService = cacheService;
+        _inventoryService = inventoryService;
     }
 
     public async Task<ProductDTO> Handle(GetProductByIdQuery request, CancellationToken ct)
@@ -29,18 +30,26 @@ public class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, P
             throw new FluentValidation.ValidationException(new[] { failure });
         }
 
+        var inventories = await _inventoryService.GetInventoryDTOsAsync(new List<string> { res.CorrelationId }, ct);
+
+        var inventoriesDictionary = inventories.Count > 0 ? inventories.ToDictionary(x => x.CorrelationId, x => x) : null;
+
         return new ProductDTO
         {
             Id = res.Id,
             Name = res.Name,
             Description = res.Description,
             Price = res.Price,
-            Inventories = res.Inventories.Select(x => new InventoryDTO
+            WareHouseId = res.WareHouseId,
+            Stock = inventoriesDictionary != null && inventoriesDictionary.ContainsKey(res.CorrelationId) ? inventoriesDictionary[res.CorrelationId].StockQuantity : 0,
+            WareHouse = inventoriesDictionary == null ? new WareHouseDTO() : new WareHouseDTO
             {
-                Id = x.Id,
-                Stock = x.Stock,
-                Name = x.Name
-            }).ToList()
+                Id = inventoriesDictionary[res.CorrelationId].WareHouseId,
+                OwerName = inventoriesDictionary[res.CorrelationId].WareHouse.OwerName,
+                Address = inventoriesDictionary[res.CorrelationId].WareHouse.Address,
+                OwerPhone = inventoriesDictionary[res.CorrelationId].WareHouse.OwerPhone,
+                OwerEmail = inventoriesDictionary[res.CorrelationId].WareHouse.OwerEmail
+            }
         };
     }
 }

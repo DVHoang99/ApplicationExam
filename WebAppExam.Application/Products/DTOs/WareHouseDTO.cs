@@ -7,12 +7,12 @@ public class WareHouseDTO
 {
     [JsonPropertyName("id")]
     public string Id { get; set; }
-    [JsonPropertyName("adress")]
+    [JsonPropertyName("address")]
     public string Address { get; set; }
-    [JsonPropertyName("owerName")]
+    [JsonPropertyName("ownerName")]
     public string OwerName { get; set; }
-    [JsonPropertyName("owerEmail")]
+    [JsonPropertyName("ownerEmail")]
     public string OwerEmail { get; set; }
-    [JsonPropertyName("owerPhone")]
+    [JsonPropertyName("ownerPhone")]
     public string OwerPhone { get; set; }
 }

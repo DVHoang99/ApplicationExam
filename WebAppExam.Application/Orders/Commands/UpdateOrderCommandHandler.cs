@@ -46,13 +46,13 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
 
             var product = products[item.ProductId];
 
-            var inventory = product.Inventories.FirstOrDefault(x => x.Id == item.InventoryId);
+           // var inventory = product.Inventories.FirstOrDefault(x => x.Id == item.InventoryId);
 
-            var inventoryId = inventory == null ? item.InventoryId : inventory.Id;
+            //var inventoryId = inventory == null ? item.InventoryId : inventory.Id;
 
 
-            order.AddOrUpdateItem(item.ProductId, product.Price, item.Quantity, inventoryId);
-            product.AddOrUpdateInventory(inventoryId, -item.Quantity, product.Id, inventory.Name);
+            //order.AddOrUpdateItem(item.ProductId, product.Price, item.Quantity, inventoryId);
+            //product.AddOrUpdateInventory(inventoryId, -item.Quantity, product.Id, inventory.Name);
         }
 
         _orderRepository.Update(order);

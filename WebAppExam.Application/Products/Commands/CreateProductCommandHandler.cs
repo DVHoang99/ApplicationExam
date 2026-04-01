@@ -10,21 +10,25 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
 {
     private readonly IProductRepository _repository;
     private readonly IWareHouseService _wareHouseService;
+    private readonly IInventoryService _inventoryService;
+    private readonly IUnitOfWork _uow;
 
 
-    public CreateProductCommandHandler(IProductRepository repository, IWareHouseService wareHouseService)
+    public CreateProductCommandHandler(IProductRepository repository, IWareHouseService wareHouseService, IInventoryService inventoryService, IUnitOfWork uow)
     {
         _repository = repository;
         _wareHouseService = wareHouseService;
+        _inventoryService = inventoryService;
+        _uow = uow;
     }
 
     public async Task<Ulid> Handle(CreateProductCommand request, CancellationToken ct)
     {
-        var product = new Product(request.Name, request.Description, request.Price);
+        var correlationId = Guid.NewGuid().ToString();
 
-        var wareHouseId = request.Inventories.Select(x => x.WareHouseId).First();
+        var product = new Product(request.Name, request.Description, request.Price, correlationId, request.WareHouseId);
 
-        var wareHouse = await _wareHouseService.GetWareHouseAsync(wareHouseId, ct);
+        var wareHouse = await _wareHouseService.GetWareHouseAsync(request.WareHouseId, ct);
 
         if (wareHouse == null)
         {
@@ -32,14 +36,17 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
             throw new FluentValidation.ValidationException(new[] { failure });
         }
 
-        foreach (var inventory in request.Inventories)
-        {
-            product.AddOrUpdateInventory(Ulid.Empty, inventory.Stock, product.Id, inventory.Name);
-        }
-
         await _repository.AddAsync(product, ct);
 
+        await _uow.SaveChangesAsync(ct);
 
+        var createInventoryAsync = await _inventoryService.CreateInventoryAsync(wareHouse.Id, product.Id.ToString(), request.Stock, correlationId, ct);
+
+        if (createInventoryAsync != null)
+        {
+            product.UpdateProductStatus(Domain.Enum.ProductStatus.Active);
+            _repository.Update(product);
+        }
 
         return product.Id;
     }

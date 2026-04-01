@@ -21,7 +21,6 @@ using WebAppExam.Application.Services;
 using WebAppExam.Domain.Repository;
 using WebAppExam.Infrastructure.Common.Caching;
 using WebAppExam.Infrastructure.Exceptions;
-using WebAppExam.Infrastructure.Jobs;
 using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
 using WebAppExam.Infrastructure.Repositories;
 using WebAppExam.Infrastructure.Services;
@@ -50,6 +49,12 @@ builder.Services.AddKafka(kafka => kafka
             producer => producer
                 .DefaultTopic("system-logs-topic")
                 .AddMiddlewares(m => m.AddSerializer<JsonCoreSerializer>())
+        )
+        .AddProducer(
+            "order-producer",
+            producer => producer
+                    .DefaultTopic("order-created-topic")
+                    .AddMiddlewares(middlewares => middlewares.AddSerializer<JsonCoreSerializer>())
         )
         .AddConsumer(consumer => consumer
             .Topic("order-events")
@@ -85,10 +90,6 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.Configuration = redisConfig;
 });
 
-builder.Services.AddSingleton<IConnectionMultiplexer>(
-    ConnectionMultiplexer.Connect(redisConfig)
-);
-
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssemblies(Assembly.GetExecutingAssembly(), typeof(TransactionBehavior<,>).Assembly);
@@ -101,7 +102,7 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
+//builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
@@ -115,6 +116,9 @@ builder.Services.AddSingleton<ILogRepository, MongoLogRepository>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IInventoryService, InventoryInternalClient>();
+builder.Services.AddScoped<IJobService, HangfireJobService>();
+
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -146,6 +150,7 @@ builder.Services.AddHangfire(config => config
 .UseSimpleAssemblyNameTypeSerializer()
 .UseRecommendedSerializerSettings()
 .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")))
+.UseFilter(new AutomaticRetryAttribute { Attempts = 5 })
 );
 
 builder.Services.AddHangfireServer();
@@ -158,23 +163,41 @@ builder.Services.AddHttpClient<IWareHouseService, WarehouseInternalClient>(clien
     client.DefaultRequestHeaders.Add("Accept", "application/json");
 });
 
+builder.Services.AddHttpClient<IInventoryService, InventoryInternalClient>(client =>
+{
+    client.BaseAddress = new Uri("http://localhost:5134/");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+});
+
+
+
+builder.Services.AddScoped<InventoryReconciliationJob, InventoryReconciliationJob>();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
+    // var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+    // // Schedule to run at 5 PM (17:00) VN time = 10:00 UTC
+    // recurringJobManager.AddOrUpdate<RevenueBackgroundJob>(
+    //     "daily-revenue-calculation",
+    //     job => job.RunDailyCalculation(),
+    //     "5 4 * * *",
+    //     new RecurringJobOptions
+    //     {
+    //         TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")
+    //     }
+    // );
     var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
 
-    // Schedule to run at 5 PM (17:00) VN time = 10:00 UTC
-    recurringJobManager.AddOrUpdate<RevenueBackgroundJob>(
-        "daily-revenue-calculation",
-        job => job.RunDailyCalculation(),
-        "5 4 * * *",
-        new RecurringJobOptions
-        {
-            TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")
-        }
+    recurringJobManager.AddOrUpdate<InventoryReconciliationJob>(
+        "reconcile-pending-products",
+        job => job.ReconcilePendingProductsAsync(),
+        "*/05 * * * *"
     );
 }
+
 //app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseExceptionHandler();
 app.UseRouting();

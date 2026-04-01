@@ -19,15 +19,5 @@ public class UpdateProductCommandValidator : FluentValidation.AbstractValidator<
 
         RuleFor(x => x.Price)
             .GreaterThan(0).WithMessage("Price must be greater than 0.");
-
-        RuleForEach(x => x.Inventories).ChildRules(inventory =>
-        {
-            inventory.RuleFor(i => i.Stock)
-                .GreaterThanOrEqualTo(0).WithMessage("Stock cannot be negative.");
-                
-            inventory.RuleFor(i => i.Name)
-                .NotEmpty().WithMessage("Inventory name is required.")
-                .MaximumLength(100).WithMessage("Inventory name must not exceed 100 characters.");
-        });
     }
 }

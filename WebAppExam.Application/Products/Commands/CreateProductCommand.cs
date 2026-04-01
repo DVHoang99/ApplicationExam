@@ -10,5 +10,7 @@ public class CreateProductCommand : ICommand<Ulid>
     public string Name { get; set; }
     public string Description { get; set; }
     public int Price { get; set; }
-    public List<InventoryDTO> Inventories { get; set; }
+    public string WareHouseId { get; set; }
+    public int Stock { get; set; }
+    //public List<InventoryDTO> Inventories { get; set; }
 }

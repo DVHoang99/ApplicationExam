@@ -1,6 +1,5 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using WebAppExam.Application.Products.Commands;
 using WebAppExam.Application.Products.DTOs;
@@ -19,32 +18,30 @@ namespace WebAppExam.API.Controller
             _mediator = mediator;
         }
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] ProductDTO product)
+        public async Task<IActionResult> Create([FromBody] ProductRequestDTO product)
         {
             var command = new CreateProductCommand
             {
                 Name = product.Name,
                 Description = product.Description,
                 Price = product.Price,
-                Inventories = product.Inventories.Select(x => new InventoryDTO
-                {
-                    Stock = x.Stock,
-                    Name = x.Name,
-                    WareHouseId = x.WareHouseId
-                }).ToList()
+                WareHouseId = product.WareHouseId,
+                Stock = product.Stock,
             };
 
             var id = await _mediator.Send(command);
-            return Ok(id);
+            return Ok(new { id });
         }
 
         [HttpGet]
         public async Task<IActionResult> GetAll(
-            [FromQuery] string name = "")
+            [FromQuery] string name = "",
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var query = new GetAllProductQuery(name);
+            var query = new GetAllProductQuery(name, pageNumber, pageSize);
             var result = await _mediator.Send(query);
-            return Ok(result);
+            return Ok(new { data = result });
         }
 
         [HttpGet("{id}")]
@@ -56,19 +53,15 @@ namespace WebAppExam.API.Controller
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(Ulid id, [FromBody] ProductDTO input)
+        public async Task<IActionResult> Update(Ulid id, [FromBody] ProductRequestDTO input)
         {
             var command = new UpdateProductCommand(id)
             {
                 Name = input.Name,
                 Description = input.Description,
                 Price = input.Price,
-                Inventories = input.Inventories.Select(x => new InventoryDTO
-                {
-                    Id = x.Id,
-                    Stock = x.Stock,
-                    Name = x.Name
-                }).ToList()
+                WareHouseId = input.WareHouseId,
+                Stock = input.Stock,
             };
 
             var result = await _mediator.Send(command);
@@ -77,9 +70,9 @@ namespace WebAppExam.API.Controller
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Delete(Ulid id)
+        public async Task<IActionResult> Delete(Ulid id, [FromQuery] string wareHouseId)
         {
-            var command = new DeleteProductCommand(id);
+            var command = new DeleteProductCommand(id, wareHouseId);
             await _mediator.Send(command);
             return NoContent();
         }

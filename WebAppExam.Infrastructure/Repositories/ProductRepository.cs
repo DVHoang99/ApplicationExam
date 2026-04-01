@@ -30,7 +30,7 @@ public class ProductRepository : Repository<Product>, IProductRepository
     public new async Task<Product?> GetByIdAsync(Ulid id, CancellationToken cancellationToken = default)
     {
         return await _context.Products
-            .Include(p => p.Inventories)
+            //.Include(p => p.Inventories)
             .FirstOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, cancellationToken);
     }
 
@@ -59,17 +59,13 @@ public class ProductRepository : Repository<Product>, IProductRepository
 
     public async Task<Dictionary<Ulid, Product>> GetProductByIdsAsync(List<Ulid> ids, CancellationToken cancellationToken = default)
     {
-        return await _context.Products.Include
-        (p => p.Inventories)
+        return await _context.Products
+        //.Include(p => p.Inventories)
             .Where(x => ids.Contains(x.Id) &&
             x.DeletedAt == null)
             .ToDictionaryAsync(x => x.Id, x => x, cancellationToken);
     }
 
-    public IQueryable<Product> Include(IQueryable<Product> query)
-    {
-        return query.Include(p => p.Inventories);
-    }
     public IQueryable<Product> SearchProductNameQuery(IQueryable<Product> query, string searchTerm)
     {
         return query.Where(x => EF.Functions.ILike(
@@ -81,5 +77,13 @@ public class ProductRepository : Repository<Product>, IProductRepository
     public Task<List<Product>> ToListAsync(IQueryable<Product> query, CancellationToken cancellationToken = default)
     {
         return query.ToListAsync(cancellationToken);
+    }
+    public async Task<List<Product>> GetProductsNotSync(CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+        .Where(x => !string.IsNullOrWhiteSpace(x.CorrelationId) &&
+        x.ProductStatus == Domain.Enum.ProductStatus.Pending &&
+        x.DeletedAt == null &&
+        x.CreatedAt >= DateTime.UtcNow.Date && x.CreatedAt < DateTime.UtcNow.AddMinutes(-5)).ToListAsync(cancellationToken);
     }
 }

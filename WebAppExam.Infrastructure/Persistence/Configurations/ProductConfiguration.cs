@@ -36,6 +36,15 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.UpdatedAt);
 
         builder.Property(x => x.DeletedAt);
+        builder.Property(x => x.CorrelationId)
+        .HasMaxLength(40);
+
+        builder.Property(x => x.ProductStatus)
+            .IsRequired();
+
+        builder.Property(x => x.WareHouseId)
+            .HasMaxLength(40)
+            .IsRequired();
 
         builder.HasIndex(x => x.Name);
     }

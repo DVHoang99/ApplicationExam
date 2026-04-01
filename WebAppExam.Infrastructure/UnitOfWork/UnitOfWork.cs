@@ -17,7 +17,7 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
 
     private IProductRepository? _products;
     private IOrderRepository? _orders;
-    private IInventoryRepository? _inventory;
+    //private IInventoryRepository? _inventory;
     private ICustomerRepository? _customers;
     private readonly IProducerAccessor _producerAccessor;
     private readonly ICurrentUserService _currentUserService;
@@ -31,7 +31,7 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
 
     public IProductRepository Products => _products ??= new ProductRepository(_context);
     public IOrderRepository Orders => _orders ??= new OrderRepository(_context);
-    public IInventoryRepository Inventory => _inventory ??= new InventoryRepository(_context);
+    //public IInventoryRepository Inventory => _inventory ??= new InventoryRepository(_context);
     public ICustomerRepository Customers => _customers ??= new CustomerRepository(_context);
 
 

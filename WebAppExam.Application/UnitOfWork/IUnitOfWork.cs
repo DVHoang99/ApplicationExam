@@ -4,7 +4,7 @@ public interface IUnitOfWork : IAsyncDisposable
 {
     IProductRepository Products { get; }
     IOrderRepository Orders { get; }
-    IInventoryRepository Inventory { get; }
+    //IInventoryRepository Inventory { get; }
     ICustomerRepository Customers { get; }
 
 
