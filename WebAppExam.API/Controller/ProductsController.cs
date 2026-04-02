@@ -30,7 +30,7 @@ namespace WebAppExam.API.Controller
             };
 
             var id = await _mediator.Send(command);
-            return Ok(new { id });
+            return Ok(new { data = id });
         }
 
         [HttpGet]

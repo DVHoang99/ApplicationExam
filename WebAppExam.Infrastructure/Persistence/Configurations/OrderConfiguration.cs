@@ -47,6 +47,8 @@ namespace WebAppExam.Infrastructure.Persistence.Configurations
 
             builder.Property(x => x.PhoneNumber)
                 .IsRequired();
+            builder.Property(x => x.Reason)
+            .HasMaxLength(200);
 
             builder.HasIndex(x => x.CustomerId);
         }

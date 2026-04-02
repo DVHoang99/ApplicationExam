@@ -15,6 +15,8 @@ using WebAppExam.Application.Auth.Services;
 using WebAppExam.Application.Behaviors;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Logger.Handlers;
+using WebAppExam.Application.Orders.Consumers;
+using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Application.Products.Services;
 using WebAppExam.Application.Revenue;
 using WebAppExam.Application.Services;
@@ -37,7 +39,7 @@ var kafkaBrokers = builder.Configuration.GetSection("KafkaConfig:Brokers").Get<s
 builder.Services.AddKafka(kafka => kafka
     .UseConsoleLog()
     .AddCluster(cluster => cluster
-        .WithBrokers(kafkaBrokers)
+        .WithBrokers(new[] { "localhost:9092" })
         .AddProducer(
             "order-events-producer",
             producer => producer
@@ -54,6 +56,13 @@ builder.Services.AddKafka(kafka => kafka
             "order-producer",
             producer => producer
                     .DefaultTopic("order-created-topic")
+                    .AddMiddlewares(middlewares => middlewares.AddSerializer<JsonCoreSerializer>())
+        )
+
+        .AddProducer(
+            "order-update-producer",
+            producer => producer
+                    .DefaultTopic("order-updated-topic")
                     .AddMiddlewares(middlewares => middlewares.AddSerializer<JsonCoreSerializer>())
         )
         .AddConsumer(consumer => consumer
@@ -74,6 +83,26 @@ builder.Services.AddKafka(kafka => kafka
             .AddMiddlewares(middlewares => middlewares
                 .AddDeserializer<JsonCoreDeserializer>()
                 .AddTypedHandlers(h => h.AddHandler<LogMessageHandler>())
+            )
+        )
+        .AddConsumer(consumer => consumer
+            .Topic("order-reply-topic")
+            .WithGroupId("order-reply-topic-group")
+            .WithWorkersCount(2)
+            .WithBufferSize(100)
+            .AddMiddlewares(middlewares => middlewares
+                .AddSingleTypeDeserializer<OrderReplyDTO, JsonCoreDeserializer>()
+                .AddTypedHandlers(h => h.AddHandler<OrderReplyHandler>())
+            )
+        )
+        .AddConsumer(consumer => consumer
+            .Topic("order-updated-reply-topic")
+            .WithGroupId("order-reply-topic-group")
+            .WithWorkersCount(2)
+            .WithBufferSize(100)
+            .AddMiddlewares(middlewares => middlewares
+                .AddSingleTypeDeserializer<OrderReplyDTO, JsonCoreDeserializer>()
+                .AddTypedHandlers(h => h.AddHandler<OrderUpdatedReplyHandler>())
             )
         )
     )
@@ -109,6 +138,7 @@ builder.Services.AddScoped<ICacheService, RedisCacheService>();
 builder.Services.AddScoped<IRevenueRepository, RevenueRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IDailyRevenueRepository, DailyRevenueRepository>();
+builder.Services.AddScoped<ICacheLockService, CacheLockService>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -118,7 +148,6 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IInventoryService, InventoryInternalClient>();
 builder.Services.AddScoped<IJobService, HangfireJobService>();
-
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

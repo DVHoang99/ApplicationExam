@@ -1,4 +1,7 @@
-﻿using WebAppExam.Domain.Enum;
+﻿using System.Net.Http.Headers;
+using WebAppExam.Application.Orders.Events;
+using WebAppExam.Domain.Entity;
+using WebAppExam.Domain.Enum;
 
 namespace WebAppExam.Domain
 {
@@ -10,6 +13,8 @@ namespace WebAppExam.Domain
         public string Address { get; set; }
         public string CustomerName { get; set; }
         public string PhoneNumber { get; set; }
+        public string Reason { get; set; } = string.Empty;
+
         private readonly List<OrderDetail> _details = new();
         public IReadOnlyCollection<OrderDetail> Details => _details.AsReadOnly();
 
@@ -20,25 +25,31 @@ namespace WebAppExam.Domain
             Id = Ulid.NewUlid();
             CustomerId = customerId;
             CreatedAt = DateTime.UtcNow;
-            Status = OrderStatus.Pending;
+            Status = OrderStatus.Draft;
             Address = address;
             CustomerName = customerName;
             PhoneNumber = phoneNumber;
         }
 
-        public void AddOrUpdateItem(Ulid productId, int unitPrice, int quantity, Ulid inventoryId)
+        public OrderDetail AddOrUpdateItem(Ulid productId, int unitPrice, int quantity, Ulid wereHouseId)
         {
-            var existingItem = _details.SingleOrDefault(x => x.ProductId == productId && x.InventoryId == inventoryId);
+            OrderDetail affectedItem;
+            var existingItem = _details.SingleOrDefault(x => x.ProductId == productId && x.WareHouseId == wereHouseId);
 
             if (existingItem != null)
             {
+                var oldQuantity = existingItem.Quantity;
                 existingItem.UpdateQuantity(quantity);
+                affectedItem = new OrderDetail(productId, unitPrice, existingItem.Quantity - oldQuantity, wereHouseId);
             }
             else
             {
-                _details.Add(new OrderDetail(productId, unitPrice, quantity, inventoryId));
+                _details.Add(new OrderDetail(productId, unitPrice, quantity, wereHouseId));
+                affectedItem = new OrderDetail(productId, unitPrice, quantity, wereHouseId);
             }
             RecalculateTotal();
+
+            return affectedItem;
         }
 
         public void RemoveItem(Ulid productId)
@@ -66,6 +77,12 @@ namespace WebAppExam.Domain
         {
             DeletedAt = DateTime.UtcNow;
             UpdatedAt = DateTime.UtcNow;
+        }
+        public void UpdateOrderStatus(OrderStatus status, string reason)
+        {
+            Status = status;
+            UpdatedAt = DateTime.UtcNow;
+            Reason = reason;
         }
     }
 }

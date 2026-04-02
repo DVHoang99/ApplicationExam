@@ -34,7 +34,7 @@ public class OrdersController : ControllerBase
             }).ToList()
         };
         var id = await _mediator.Send(command);
-        return Ok(id);
+        return Ok(new { data = id });
     }
     [HttpGet]
     public async Task<IActionResult> GetAll(
@@ -70,7 +70,7 @@ public class OrdersController : ControllerBase
             {
                 ProductId = x.ProductId,
                 Quantity = x.Quantity,
-                //InventoryId = x.InventoryId
+                WareHouseId = x.WareHouseId
             }).ToList()
         };
 

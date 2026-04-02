@@ -31,7 +31,7 @@ namespace WebAppExam.API.Controller
 
             var id = await _mediator.Send(command);
 
-            return Ok(id);
+            return Ok(new { data = id });
         }
         [HttpGet]
         public async Task<IActionResult> GetAll(

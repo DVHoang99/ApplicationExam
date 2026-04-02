@@ -10,5 +10,6 @@ namespace WebAppExam.Domain.Repository
         IQueryable<Order> GetOrderByPhoneNumberQuery(IQueryable<Order> query, string searchTerm);
         IQueryable<Order> GetOrderByCustomerNameQuery(IQueryable<Order> query, string searchTerm);
         Task<IEnumerable<Order>> ToListAsync(IQueryable<Order> query, CancellationToken cancellationToken);
+        Task<Order?> GetOrderByIdAndStatusAsync(Ulid orderId, Enum.OrderStatus status, CancellationToken cancellationToken);
     }
 }

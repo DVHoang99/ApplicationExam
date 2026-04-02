@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WebAppExam.Domain;
+using WebAppExam.Domain.Enum;
 using WebAppExam.Domain.Repository;
 using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
 
@@ -79,5 +80,11 @@ public class OrderRepository : Repository<Order>, IOrderRepository
             .Include(o => o.Details)
             .Where(o => o.DeletedAt == null)
             .ToListAsync(cancellationToken);
+    }
+    public async Task<Order?> GetOrderByIdAndStatusAsync(Ulid orderId, OrderStatus status, CancellationToken cancellationToken)
+    {
+        return await _dbSet
+            .Include(o => o.Details)
+            .FirstOrDefaultAsync(o => o.Id == orderId && o.DeletedAt == null && o.Status == status, cancellationToken);
     }
 }

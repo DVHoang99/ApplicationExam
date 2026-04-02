@@ -7,6 +7,9 @@ using WebAppExam.Application.Logger.DTOs;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using WebAppExam.Application.Services;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using WebAppExam.Domain.Entity;
+using MediatR;
 
 namespace WebAppExam.Infrastructure.UnitOfWork;
 
@@ -21,12 +24,15 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
     private ICustomerRepository? _customers;
     private readonly IProducerAccessor _producerAccessor;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IMediator _mediator;
 
-    public UnitOfWork(AppDbContext context, IProducerAccessor producerAccessor, ICurrentUserService currentUserService)
+
+    public UnitOfWork(AppDbContext context, IProducerAccessor producerAccessor, ICurrentUserService currentUserService, IMediator mediator)
     {
         _context = context;
         _producerAccessor = producerAccessor;
         _currentUserService = currentUserService;
+        _mediator = mediator;
     }
 
     public IProductRepository Products => _products ??= new ProductRepository(_context);
@@ -78,10 +84,27 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var auditEntries = GetAuditEntries();
+        
         var result = await _context.SaveChangesAsync(cancellationToken);
+        await PublishEvents(cancellationToken);
         await PublishAuditLogsAsync(auditEntries);
-
+        
         return result;
+    }
+    private async Task PublishEvents(CancellationToken ct)
+    {
+        var entitiesWithEvents = _context.ChangeTracker.Entries<AggregateRoot>()
+            .Where(e => e.Entity.DomainEvents.Any())
+            .Select(e => e.Entity).ToList();
+
+        foreach (var entity in entitiesWithEvents)
+        {
+            foreach (var @event in entity.DomainEvents)
+            {
+                await _mediator.Publish(@event, ct);
+            }
+            entity.ClearDomainEvents();
+        }
     }
 
     private async Task PublishAuditLogsAsync(List<AuditLogMessageDTO> auditEntries)

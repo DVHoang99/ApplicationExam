@@ -34,7 +34,7 @@ public class OrderDetailConfiguration : IEntityTypeConfiguration<OrderDetail>
         builder.Property(x => x.Price)
             .IsRequired();
 
-        builder.Property(x => x.InventoryId)
+        builder.Property(x => x.WareHouseId)
             .HasConversion(
                 v => v.ToString(),
                 v => Ulid.Parse(v)

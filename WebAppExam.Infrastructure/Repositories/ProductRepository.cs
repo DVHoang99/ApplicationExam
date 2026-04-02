@@ -65,6 +65,14 @@ public class ProductRepository : Repository<Product>, IProductRepository
             x.DeletedAt == null)
             .ToDictionaryAsync(x => x.Id, x => x, cancellationToken);
     }
+    public async Task<Dictionary<Ulid, Product>> GetProductByIdsAndWareHouseIdsAsync(List<Ulid> ids, List<string> wareHouseIds, CancellationToken cancellationToken = default)
+    {
+        return await _context.Products
+            .Where(x => ids.Contains(x.Id) &&
+            x.DeletedAt == null &&
+            wareHouseIds.Contains(x.WareHouseId))
+            .ToDictionaryAsync(x => x.Id, x => x, cancellationToken);
+    }
 
     public IQueryable<Product> SearchProductNameQuery(IQueryable<Product> query, string searchTerm)
     {

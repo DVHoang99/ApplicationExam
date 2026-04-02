@@ -19,7 +19,6 @@ namespace WebAppExam.API.Controller
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] UserDTO request)
         {
             var command = new CreateUserCommand
@@ -30,7 +29,7 @@ namespace WebAppExam.API.Controller
                 Role = request.Role
             };
             var result = await _mediator.Send(command);
-            return Ok(result);
+            return Ok(new {id = result});
         }
 
         // [HttpPut("{id}")]
