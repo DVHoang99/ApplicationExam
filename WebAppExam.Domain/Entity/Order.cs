@@ -52,14 +52,20 @@ namespace WebAppExam.Domain
             return affectedItem;
         }
 
-        public void RemoveItem(Ulid productId)
+        public OrderDetail? RemoveItem(Ulid productId, string wareHouseId)
         {
-            var item = _details.SingleOrDefault(x => x.ProductId == productId);
-            if (item != null)
+            var parsedWareHouseId = Ulid.Parse(wareHouseId);
+
+            var item = _details.SingleOrDefault(x => x.ProductId == productId && x.WareHouseId == parsedWareHouseId);
+
+            if (item == null)
             {
-                _details.Remove(item);
+                return null;
             }
+            var affectedItem = new OrderDetail(productId, item.Price, -item.Quantity, parsedWareHouseId);
+            _details.Remove(item);
             RecalculateTotal();
+            return affectedItem;
         }
         private void RecalculateTotal()
         {

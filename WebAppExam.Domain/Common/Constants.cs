@@ -8,5 +8,6 @@ public static class Constants
     {
         public const string OrderCreatedPrefix = "order-created";
         public const string OrderUpdatePrefix = "order-update";
+        public const string OrderDeletedPrefix = "order-deleted";
     }
 }

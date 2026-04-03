@@ -33,14 +33,9 @@ public class UpdateProductCommandHandler : IRequestHandler<UpdateProductCommand,
 
         product.UpdateInformation(request.Name, request.Description, request.Price);
 
-        // foreach (var inventory in request.Inventories)
-        // {
-        //     product.AddOrUpdateInventory(inventory.Id, inventory.Stock, product.Id, inventory.Name);
-        // }
-
         _productRepository.Update(product);
 
-        await _cacheService.RemoveByPrefixAsync($"product_detail:{request.ProductId}");
+        await _cacheService.RemoveByPrefixAsync($"inventory:stock:{request.WareHouseId}:{request.ProductId}");
 
         var updateEventId = Guid.NewGuid();
 

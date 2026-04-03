@@ -17,11 +17,11 @@ public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
 
     public async Task Handle(IMessageContext context, OrderReplyDTO messageDto)
     {
-        using var scope = _serviceProvider.CreateScope();
+        await using var scope = _serviceProvider.CreateAsyncScope();
 
         var repository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
         var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-
+        var order1 = await repository.GetByIdAsync(messageDto.OrderId);
         var order = await repository.GetOrderByIdAndStatusAsync(messageDto.OrderId, Domain.Enum.OrderStatus.Draft, CancellationToken.None);
         if (order == null)
         {

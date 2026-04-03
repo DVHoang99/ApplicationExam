@@ -1,11 +1,10 @@
 using MediatR;
-using WebAppExam.Application.Common.Caching;
+using WebAppExam.Application.Common;
 using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Application.Orders.Events;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Events;
 using WebAppExam.Domain.Repository;
-
 namespace WebAppExam.Application.Orders.Commands;
 
 public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Ulid>
@@ -13,34 +12,28 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Uli
     private readonly ICustomerRepository _customerRepository;
     private readonly IOrderRepository _orderRepository;
     private readonly IProductRepository _productRepository;
-    private readonly ICacheLockService _lockService;
-
+    private readonly IInventoryReservationService _inventoryReservationService;
 
     public CreateOrderCommandHandler(
         ICustomerRepository customerRepository,
         IOrderRepository orderRepository,
         IProductRepository productRepository,
-        ICacheLockService lockService
-        )
+        IInventoryReservationService inventoryReservationService)
     {
         _orderRepository = orderRepository;
         _productRepository = productRepository;
         _customerRepository = customerRepository;
-        _lockService = lockService;
+        _inventoryReservationService = inventoryReservationService;
     }
 
     public async Task<Ulid> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
     {
-        var customerExists = await _customerRepository.GetByIdAsync(request.CustomerId, cancellationToken);
-
-        if (customerExists == null)
-        {
-            var failure = new FluentValidation.Results.ValidationFailure("Customer", "Customer not found.");
-            throw new FluentValidation.ValidationException(new[] { failure });
-        }
-
         if (request.Items == null || !request.Items.Any())
-            throw new Exception("Giỏ hàng đang trống, không thể tạo đơn!");
+            throw new Exception("Cart is empty, cannot create order!");
+
+        var customerExists = await _customerRepository.GetByIdAsync(request.CustomerId, cancellationToken);
+        if (customerExists == null)
+            throw new FluentValidation.ValidationException(new[] { new FluentValidation.Results.ValidationFailure("Customer", "Customer not found.") });
 
         var groupedItems = request.Items
             .GroupBy(x => new { x.ProductId, x.WareHouseId })
@@ -53,48 +46,28 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Uli
             .OrderBy(x => x.ProductId)
             .ToList();
 
-        var lockKeys = groupedItems
-            .Select(x => $"lock:inventory:{x.WareHouseId}:{x.ProductId}")
-            .ToList();
+        var products = await _productRepository.GetProductByIdsAndWareHouseIdsAsync(
+            groupedItems.Select(x => x.ProductId).ToList(),
+            groupedItems.Select(x => x.WareHouseId).ToList(),
+            cancellationToken);
 
-        var lockToken = Guid.NewGuid().ToString();
-        var acquiredLocks = new List<string>();
+        var newOrder = new Order(request.CustomerId, request.Address, request.CustomerName, request.PhoneNumber);
+
+        foreach (var item in groupedItems)
+        {
+            if (!products.TryGetValue(item.ProductId, out var product))
+            {
+                var failure = new FluentValidation.Results.ValidationFailure("Product", $"ProductId {item.ProductId} not found.");
+                throw new FluentValidation.ValidationException(new[] { failure });
+            }
+
+            newOrder.AddOrUpdateItem(item.ProductId, product.Price, item.Quantity, Ulid.Parse(item.WareHouseId));
+        }
+
+        await _inventoryReservationService.ReserveStocksAsync(request.CustomerId, groupedItems);
 
         try
         {
-            acquiredLocks = await _lockService.AcquireMultipleLocksAsync(lockKeys, lockToken, TimeSpan.FromSeconds(10));
-
-            if (!acquiredLocks.Any() && lockKeys.Any())
-            {
-                var failure = new FluentValidation.Results.ValidationFailure("System", "System is busy. Please try again later.");
-                throw new FluentValidation.ValidationException(new[] { failure });
-            }
-            var newOrder = new Order(request.CustomerId, request.Address, request.CustomerName, request.PhoneNumber);
-            var products = await _productRepository.GetProductByIdsAndWareHouseIdsAsync(
-            request.Items.Select(x => x.ProductId).ToList(),
-            request.Items.Select(x => x.WareHouseId).ToList(),
-            cancellationToken);
-
-            var invalidProducts = request.Items.Where(x => !products.ContainsKey(x.ProductId));
-
-            if (invalidProducts.Any())
-            {
-                var failure = new FluentValidation.Results.ValidationFailure("Product", "Product not found.");
-                throw new FluentValidation.ValidationException(new[] { failure });
-            }
-
-            foreach (var item in request.Items)
-            {
-                if (!products.ContainsKey(item.ProductId))
-                {
-                    var failure = new FluentValidation.Results.ValidationFailure("Product", $"ProductId {item.ProductId} not found.");
-                    throw new FluentValidation.ValidationException(new[] { failure });
-                }
-
-                var product = products[item.ProductId];
-
-                newOrder.AddOrUpdateItem(item.ProductId, product.Price, item.Quantity, Ulid.Parse(item.WareHouseId));
-            }
 
             await _orderRepository.AddAsync(newOrder, cancellationToken);
 
@@ -102,7 +75,7 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Uli
             {
                 OrderId = newOrder.Id.ToString(),
                 CustomerName = request.CustomerName,
-                Items = request.Items.Select(x => new OrderItemEvent
+                Items = groupedItems.Select(x => new OrderItemEvent
                 {
                     ProductId = x.ProductId.ToString(),
                     Quantity = x.Quantity,
@@ -114,13 +87,10 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Uli
 
             return newOrder.Id;
         }
-        finally
+        catch (Exception ex)
         {
-            if (acquiredLocks.Any())
-            {
-                await _lockService.ReleaseMultipleLocksAsync(acquiredLocks, lockToken);
-            }
+            await _inventoryReservationService.ReleaseStocksAsync(groupedItems);
+            throw new Exception("Lỗi khi lưu đơn hàng, đã hoàn trả lại tồn kho.", ex);
         }
-
     }
 }

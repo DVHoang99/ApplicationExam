@@ -37,7 +37,7 @@ public class DeleteProductCommandHandler : IRequestHandler<DeleteProductCommand,
 
         _productRepository.Update(product);
 
-        await _cacheService.RemoveByPrefixAsync($"product_detail:{request.ProductId}");
+        await _cacheService.RemoveByPrefixAsync($"inventory:stock:{request.WareHouseId}:{request.ProductId}");
         _jobService.Enqueue(() => _inventoryService.CallInventoryToDelete(product.Id.ToString(), product.WareHouseId, ct));
         return product.Id;
     }

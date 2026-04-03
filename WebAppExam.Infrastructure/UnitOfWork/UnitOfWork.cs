@@ -57,7 +57,10 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
             await SaveChangesAsync();
             if (_transaction != null)
             {
+                var auditEntries = GetAuditEntries();
                 await _transaction.CommitAsync();
+                await PublishEvents();
+                await PublishAuditLogsAsync(auditEntries);
             }
         }
         finally
@@ -83,15 +86,10 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var auditEntries = GetAuditEntries();
-        
         var result = await _context.SaveChangesAsync(cancellationToken);
-        await PublishEvents(cancellationToken);
-        await PublishAuditLogsAsync(auditEntries);
-        
         return result;
     }
-    private async Task PublishEvents(CancellationToken ct)
+    private async Task PublishEvents(CancellationToken ct = default)
     {
         var entitiesWithEvents = _context.ChangeTracker.Entries<AggregateRoot>()
             .Where(e => e.Entity.DomainEvents.Any())

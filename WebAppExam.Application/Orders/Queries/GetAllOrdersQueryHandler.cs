@@ -33,6 +33,8 @@ public class GetAllOrdersQueryHandler : IRequestHandler<GetAllOrdersQuery, List<
             query = _orderRepository.GetOrderByPhoneNumberQuery(query, request.PhoneNumber);
         }
 
+        query = query.Skip((request.pageNumber - 1) * request.pageSize).Take(request.pageSize);
+
         var maps = await _orderRepository.ToListAsync(query, cancellationToken);
 
         return maps.Select(order => new OrderDto

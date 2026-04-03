@@ -41,12 +41,14 @@ public class OrdersController : ControllerBase
         [FromQuery] DateTime? fromDate,
         [FromQuery] DateTime? toDate,
         [FromQuery] string customerName = "",
-        [FromQuery] string phoneNumber = ""
+        [FromQuery] string phoneNumber = "",
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10
         )
     {
-        var query = new GetAllOrdersQuery(fromDate, toDate, customerName, phoneNumber);
+        var query = new GetAllOrdersQuery(fromDate, toDate, customerName, phoneNumber, pageNumber, pageSize);
         var result = await _mediator.Send(query);
-        return Ok(result);
+        return Ok(new { data = result });
     }
 
     [HttpGet("{id}")]

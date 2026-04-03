@@ -18,7 +18,7 @@ public class OrderUpdatedReplyHandler : IMessageHandler<OrderReplyDTO>
     }
     public async Task Handle(IMessageContext context, OrderReplyDTO messageDto)
     {
-        using var scope = _serviceProvider.CreateScope();
+        await using var scope = _serviceProvider.CreateAsyncScope();
 
         var repository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
         var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();

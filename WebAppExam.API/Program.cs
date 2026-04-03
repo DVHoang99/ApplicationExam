@@ -13,6 +13,7 @@ using StackExchange.Redis;
 using WebAppExam.API.Services;
 using WebAppExam.Application.Auth.Services;
 using WebAppExam.Application.Behaviors;
+using WebAppExam.Application.Common;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Logger.Handlers;
 using WebAppExam.Application.Orders.Consumers;
@@ -23,6 +24,7 @@ using WebAppExam.Application.Services;
 using WebAppExam.Domain.Repository;
 using WebAppExam.Infrastructure.Common.Caching;
 using WebAppExam.Infrastructure.Exceptions;
+using WebAppExam.Infrastructure.Jobs;
 using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
 using WebAppExam.Infrastructure.Repositories;
 using WebAppExam.Infrastructure.Services;
@@ -40,6 +42,9 @@ builder.Services.AddKafka(kafka => kafka
     .UseConsoleLog()
     .AddCluster(cluster => cluster
         .WithBrokers(new[] { "localhost:9092" })
+        .CreateTopicIfNotExists("order-created-topic", 3, 1)
+        .CreateTopicIfNotExists("order-updated-topic", 3, 1)
+        .CreateTopicIfNotExists("order-deleted-topic", 3, 1)
         .AddProducer(
             "order-events-producer",
             producer => producer
@@ -58,11 +63,16 @@ builder.Services.AddKafka(kafka => kafka
                     .DefaultTopic("order-created-topic")
                     .AddMiddlewares(middlewares => middlewares.AddSerializer<JsonCoreSerializer>())
         )
-
         .AddProducer(
             "order-update-producer",
             producer => producer
                     .DefaultTopic("order-updated-topic")
+                    .AddMiddlewares(middlewares => middlewares.AddSerializer<JsonCoreSerializer>())
+        )
+        .AddProducer(
+            "order-deleted-producer",
+            producer => producer
+                    .DefaultTopic("order-deleted-topic")
                     .AddMiddlewares(middlewares => middlewares.AddSerializer<JsonCoreSerializer>())
         )
         .AddConsumer(consumer => consumer
@@ -148,6 +158,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IInventoryService, InventoryInternalClient>();
 builder.Services.AddScoped<IJobService, HangfireJobService>();
+builder.Services.AddScoped<IInventoryReservationService, InventoryReservationService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -206,25 +217,19 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    // var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
 
-    // // Schedule to run at 5 PM (17:00) VN time = 10:00 UTC
     // recurringJobManager.AddOrUpdate<RevenueBackgroundJob>(
     //     "daily-revenue-calculation",
     //     job => job.RunDailyCalculation(),
-    //     "5 4 * * *",
-    //     new RecurringJobOptions
-    //     {
-    //         TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")
-    //     }
+    //     "* * * * *"
     // );
-    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
 
-    recurringJobManager.AddOrUpdate<InventoryReconciliationJob>(
-        "reconcile-pending-products",
-        job => job.ReconcilePendingProductsAsync(),
-        "*/05 * * * *"
-    );
+    // recurringJobManager.AddOrUpdate<InventoryReconciliationJob>(
+    //     "reconcile-pending-products",
+    //     job => job.ReconcilePendingProductsAsync(),
+    //     "*/05 * * * *"
+    // );
 }
 
 //app.UseMiddleware<RequestLoggingMiddleware>();
