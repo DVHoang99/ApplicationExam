@@ -26,7 +26,7 @@ public class CancelOrderCommandHandler : IRequestHandler<CancelOrderCommand, Uli
     {
         var order = await _orderRepository.GetByIdAsync(request.Id, cancellationToken);
 
-        if (order == null)
+        if (order == null || order.Status == OrderStatus.Canceled)
         {
             var failure = new FluentValidation.Results.ValidationFailure("Order", "Order not found.");
             throw new FluentValidation.ValidationException(new[] { failure });

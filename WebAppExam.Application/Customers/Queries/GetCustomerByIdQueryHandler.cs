@@ -2,12 +2,13 @@ using System;
 using MediatR;
 using Microsoft.AspNetCore.DataProtection.KeyManagement.Internal;
 using WebAppExam.Application.Common.Caching;
+using WebAppExam.Application.Customers.DTOs;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Customers.Queries;
 
-public class GetCustomerByIdQueryHandler : IRequestHandler<GetCustomerByIdQuery, Customer>
+public class GetCustomerByIdQueryHandler : IRequestHandler<GetCustomerByIdQuery, CustomerDTO>
 {
     private readonly ICustomerRepository _customerRepository;
     private readonly ICacheService _cacheService;
@@ -18,7 +19,7 @@ public class GetCustomerByIdQueryHandler : IRequestHandler<GetCustomerByIdQuery,
         _cacheService = cacheService;
         _customerRepository = customerRepository;
     }
-    public async Task<Customer> Handle(GetCustomerByIdQuery request, CancellationToken ct)
+    public async Task<CustomerDTO> Handle(GetCustomerByIdQuery request, CancellationToken ct)
     {
 
         var customer = await _cacheService.GetAsync($"customer_detail:{request.Id}", async () =>
@@ -30,10 +31,16 @@ public class GetCustomerByIdQueryHandler : IRequestHandler<GetCustomerByIdQuery,
                 var failure = new FluentValidation.Results.ValidationFailure("Customer", "Customer not found");
                 throw new FluentValidation.ValidationException(new[] { failure });
             }
-            return customer;
-        },TimeSpan.FromDays(1), ct);
+            return new CustomerDTO
+            {
+                Id = customer.Id,
+                CustomerName = customer.CustomerName,
+                Email = customer.Email,
+                Phone = customer.PhoneNumber
+            };
+        }, TimeSpan.FromDays(1), ct);
 
 
-        return customer ?? new Customer();
+        return customer ?? new CustomerDTO();
     }
 }

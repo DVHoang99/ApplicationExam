@@ -33,6 +33,7 @@ public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, Order
                 ProductId = x.ProductId,
                 Quantity = x.Quantity,
                 Price = x.Price,
+                WareHouseId = x.WareHouseId.ToString()
             }).ToList();
 
             var res = new OrderDto

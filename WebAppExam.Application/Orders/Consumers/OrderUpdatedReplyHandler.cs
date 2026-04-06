@@ -21,6 +21,7 @@ public class OrderUpdatedReplyHandler : IMessageHandler<OrderReplyDTO>
         await using var scope = _serviceProvider.CreateAsyncScope();
 
         var repository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
+        var dailyRepository = scope.ServiceProvider.GetRequiredService<IDailyRevenueRepository>();
         var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var order = await repository.GetOrderByIdAndStatusAsync(messageDto.OrderId, Domain.Enum.OrderStatus.Updating, CancellationToken.None);
         if (order == null)
@@ -40,6 +41,16 @@ public class OrderUpdatedReplyHandler : IMessageHandler<OrderReplyDTO>
         }
 
         repository.Update(order);
+
+
+        var key = order.CreatedAt.Date.ToString("yyyy-MM-dd");
+        var dailyRevenue = await dailyRepository.GetByKeyAsync(key, CancellationToken.None);
+        if (dailyRevenue != null && dailyRevenue.UpdatedAt > order.CreatedAt)
+        {
+            dailyRevenue.AddDailyRevenue(0, -order.TotalAmount);
+            dailyRepository.Update(dailyRevenue);
+        }
+
         await uow.CommitAsync();
     }
 

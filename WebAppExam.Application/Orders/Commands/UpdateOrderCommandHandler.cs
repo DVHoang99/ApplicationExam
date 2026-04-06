@@ -16,16 +16,20 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
     private readonly IProductRepository _productRepository;
     private readonly ICacheService _cacheService;
     private readonly IInventoryReservationService _inventoryReservationService;
+    private readonly IDailyRevenueRepository _dailyRepository;
+
 
     public UpdateOrderCommandHandler(IOrderRepository orderRepository,
     ICacheService cacheService,
     IProductRepository productRepository,
-    IInventoryReservationService inventoryReservationService)
+    IInventoryReservationService inventoryReservationService,
+    IDailyRevenueRepository dailyRepository)
     {
         _orderRepository = orderRepository;
         _productRepository = productRepository;
         _cacheService = cacheService;
         _inventoryReservationService = inventoryReservationService;
+        _dailyRepository = dailyRepository;
     }
 
     public async Task<Ulid> Handle(UpdateOrderCommand request, CancellationToken ct)
@@ -116,9 +120,17 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
                 if (removedItem != null) itemUpdated.Add(removedItem);
             }
 
-            order.UpdateOrderStatus(OrderStatus.Draft, "Updating...");
+            order.UpdateOrderStatus(OrderStatus.Updating, "Updating...");
 
             _orderRepository.Update(order);
+
+            var key = order.CreatedAt.Date.ToString("yyyy-MM-dd");
+            var dailyRevenue = await _dailyRepository.GetByKeyAsync(key, CancellationToken.None);
+            if (dailyRevenue != null && dailyRevenue.UpdatedAt > order.CreatedAt)
+            {
+                dailyRevenue.AddDailyRevenue(0, order.TotalAmount - oldTotalAmount);
+                _dailyRepository.Update(dailyRevenue);
+            }
 
             // Attach Events
             var orderUpdateEvent = new OrderUpdatedEvent
