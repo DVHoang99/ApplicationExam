@@ -21,7 +21,7 @@ namespace WebAppExam.API.Controller
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] UserLoginDto request)
         {
-            var command = new LoginCommand(request.Username, request.Password);
+            var command = LoginCommand.Login(request.Username, request.Password);
             var result = await _mediator.Send(command);
             return Ok(result);
         }
@@ -30,7 +30,7 @@ namespace WebAppExam.API.Controller
         public async Task<IActionResult> Refresh([FromBody] TokenDTO tokenApiModel)
         {
 
-            var command = new RefreshTokenCommand(tokenApiModel.AccessToken, tokenApiModel.RefreshToken);
+            var command = RefreshTokenCommand.Refresh(tokenApiModel.AccessToken, tokenApiModel.RefreshToken);
             var result = await _mediator.Send(command);
             return Ok(result);
         }
@@ -39,7 +39,7 @@ namespace WebAppExam.API.Controller
         public async Task<IActionResult> Logout([FromBody] string username)
         {
 
-            var command = new LogoutCommand(username);
+            var command = LogoutCommand.Logout(username);
             var result = await _mediator.Send(command);
             return Ok(result);
         }

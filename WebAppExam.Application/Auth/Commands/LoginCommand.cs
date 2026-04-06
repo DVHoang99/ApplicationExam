@@ -3,8 +3,17 @@ using WebAppExam.Application.Shared;
 
 namespace WebAppExam.Application.Auth.Commands;
 
-public class LoginCommand(string username, string password) : ICommand<TokenDTO>
+public class LoginCommand : ICommand<TokenDTO>
 {
-    public string Username { get; set; } = username;
-    public string Password { get; set; } = password;
+    public required string Username { get; set; }
+    public required string Password { get; set; }
+
+    public static LoginCommand Login(string userName, string password)
+    {
+        return new LoginCommand
+        {
+            Username = userName,
+            Password = password
+        };
+    }
 }

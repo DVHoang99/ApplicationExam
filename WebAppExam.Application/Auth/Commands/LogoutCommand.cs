@@ -3,7 +3,14 @@ using WebAppExam.Application.Shared;
 
 namespace WebAppExam.Application.Auth.Commands;
 
-public class LogoutCommand(string username) : ICommand<string>
+public class LogoutCommand : ICommand<string>
 {
-    public string Username { get; set; } = username;
+    public required string Username { get; set; }
+    public static LogoutCommand Logout(string userName)
+    {
+        return new LogoutCommand
+        {
+            Username = userName
+        };
+    }
 }

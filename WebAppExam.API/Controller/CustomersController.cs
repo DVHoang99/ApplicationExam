@@ -22,13 +22,7 @@ namespace WebAppExam.API.Controller
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CustomerDTO input)
         {
-            var command = new CreateCustomerCommand
-            {
-                CustomerName = input.CustomerName,
-                Email = input.Email,
-                Phone = input.Phone
-            };
-
+            var command = CreateCustomerCommand.Create(input.CustomerName, input.Email, input.Phone);
             var id = await _mediator.Send(command);
 
             return Ok(new { data = id });
@@ -41,7 +35,7 @@ namespace WebAppExam.API.Controller
             [FromQuery] int pageSize = 10
             )
         {
-            var query = new GetAllCustomerQuery(phoneNumber, customerName, pageNumber, pageSize);
+            var query = GetAllCustomerQuery.GetAll(phoneNumber, customerName, pageNumber, pageSize);
             var result = await _mediator.Send(query);
             return Ok(result);
         }
@@ -49,7 +43,7 @@ namespace WebAppExam.API.Controller
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(Ulid id)
         {
-            var query = new GetCustomerByIdQuery(id);
+            var query = GetCustomerByIdQuery.Init(id);
             var result = await _mediator.Send(query);
             return Ok(new { data = result });
         }
@@ -57,12 +51,7 @@ namespace WebAppExam.API.Controller
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(Ulid id, [FromBody] CustomerDTO input)
         {
-            var command = new UpdateCustomerCommand(id)
-            {
-                CustomerName = input.CustomerName,
-                Email = input.Email,
-                Phone = input.Phone
-            };
+            var command = UpdateCustomerCommand.Init(id, input.CustomerName, input.Email, input.Phone);
 
             var result = await _mediator.Send(command);
             return Ok(new { data = result });
@@ -72,7 +61,7 @@ namespace WebAppExam.API.Controller
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(Ulid id)
         {
-            var command = new DeleteCustomerCommand(id);
+            var command = DeleteCustomerCommand.Init(id);
             await _mediator.Send(command);
             return NoContent();
         }

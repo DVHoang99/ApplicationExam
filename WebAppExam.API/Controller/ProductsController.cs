@@ -20,14 +20,7 @@ namespace WebAppExam.API.Controller
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] ProductRequestDTO product)
         {
-            var command = new CreateProductCommand
-            {
-                Name = product.Name,
-                Description = product.Description,
-                Price = product.Price,
-                WareHouseId = product.WareHouseId,
-                Stock = product.Stock,
-            };
+            var command = CreateProductCommand.Init(product.Name, product.Description, product.Price, product.WareHouseId, product.Stock);
 
             var id = await _mediator.Send(command);
             return Ok(new { data = id });
@@ -39,7 +32,7 @@ namespace WebAppExam.API.Controller
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)
         {
-            var query = new GetAllProductQuery(name, pageNumber, pageSize);
+            var query = GetAllProductQuery.Init(name, pageNumber, pageSize);
             var result = await _mediator.Send(query);
             return Ok(new { data = result });
         }

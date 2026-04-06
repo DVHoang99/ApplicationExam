@@ -12,4 +12,8 @@ public class GetAllOrdersQuery(DateTime? fromDate, DateTime? toDate, string cust
     public DateTime? ToDate { get; set; } = toDate;
     public int pageNumber { get; set; } = pageNumber;
     public int pageSize { get; set; } = pageSize;
+    public static GetAllOrdersQuery Init(DateTime? fromDate, DateTime? toDate, string customerName, string phoneNumber, int pageNumber, int pageSize)
+    {
+        return new GetAllOrdersQuery(fromDate, toDate, customerName, phoneNumber, pageNumber, pageSize);
+    }
 }

@@ -20,22 +20,11 @@ public class OrdersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] OrderDto input)
     {
-        var command = new CreateOrderCommand
-        {
-            CustomerId = input.CustomerId,
-            Address = input.Address,
-            PhoneNumber = input.PhoneNumber,
-            CustomerName = input.CustomerName,
-            Items = input.Details.Select(x => new OrderItemDto
-            {
-                ProductId = x.ProductId,
-                Quantity = x.Quantity,
-                WareHouseId = x.WareHouseId
-            }).ToList()
-        };
+        var command = CreateOrderCommand.Init(input);
         var id = await _mediator.Send(command);
         return Ok(new { data = id });
     }
+
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] DateTime? fromDate,
@@ -46,7 +35,7 @@ public class OrdersController : ControllerBase
         [FromQuery] int pageSize = 10
         )
     {
-        var query = new GetAllOrdersQuery(fromDate, toDate, customerName, phoneNumber, pageNumber, pageSize);
+        var query = GetAllOrdersQuery.Init(fromDate, toDate, customerName, phoneNumber, pageNumber, pageSize);
         var result = await _mediator.Send(query);
         return Ok(new { data = result });
     }
@@ -54,7 +43,7 @@ public class OrdersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Ulid id)
     {
-        var query = new GetOrderByIdQuery(id);
+        var query = GetOrderByIdQuery.Init(id);
         var result = await _mediator.Send(query);
         return Ok(new { data = result });
     }
@@ -62,19 +51,7 @@ public class OrdersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Ulid id, [FromBody] OrderDto input)
     {
-        var command = new UpdateOrderCommand(id)
-        {
-            CustomerId = input.CustomerId,
-            CustomerName = input.CustomerName,
-            Address = input.Address,
-            PhoneNumber = input.PhoneNumber,
-            Items = input.Details.Select(x => new OrderItemDto
-            {
-                ProductId = x.ProductId,
-                Quantity = x.Quantity,
-                WareHouseId = x.WareHouseId
-            }).ToList()
-        };
+        var command = UpdateOrderCommand.Init(id, input);
 
         var result = await _mediator.Send(command);
         return Ok(new { data = result });
@@ -83,7 +60,7 @@ public class OrdersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Ulid id)
     {
-        var command = new DeleteOrderCommand(id);
+        var command = DeleteOrderCommand.Init(id);
         await _mediator.Send(command);
         return NoContent();
     }
@@ -91,7 +68,7 @@ public class OrdersController : ControllerBase
     [HttpPost("{id}/canceled")]
     public async Task<IActionResult> Cancel(Ulid id)
     {
-        var command = new CancelOrderCommand(id);
+        var command = CancelOrderCommand.Init(id);
         var res = await _mediator.Send(command);
         return Ok(new { data = res });
     }

@@ -10,4 +10,9 @@ public class GetAllCustomerQuery(string phoneNumber, string customerName, int pa
     public string CustomerName { get; set; } = customerName;
     public int PageNumber { get; set; } = pageNumber;
     public int PageSize { get; set; } = pageSize;
+
+    public static GetAllCustomerQuery GetAll(string phoneNumber, string customerName, int pageNumber, int pageSize)
+    {
+        return new GetAllCustomerQuery(phoneNumber, customerName, pageNumber, pageSize);
+    }
 }
