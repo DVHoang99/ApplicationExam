@@ -6,4 +6,5 @@ namespace WebAppExam.Domain.Repository;
 
 public interface IDailyRevenueRepository : IRepository<DailyRevenue>
 {
+    Task<DailyRevenue?> GetByKeyAsync(string id, CancellationToken cancellationToken = default);
 }

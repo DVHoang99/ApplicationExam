@@ -36,9 +36,12 @@ namespace WebAppExam.API.Controller
         [HttpGet]
         public async Task<IActionResult> GetAll(
             [FromQuery] string phoneNumber = "",
-            [FromQuery] string customerName = "")
+            [FromQuery] string customerName = "",
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10
+            )
         {
-            var query = new GetAllCustomerQuery(phoneNumber, customerName);
+            var query = new GetAllCustomerQuery(phoneNumber, customerName, pageNumber, pageSize);
             var result = await _mediator.Send(query);
             return Ok(result);
         }

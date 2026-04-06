@@ -1,30 +1,28 @@
+using System;
 using MediatR;
+using Microsoft.AspNetCore.Mvc;
 using WebAppExam.Application.Common;
-using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Application.Orders.Events;
+using WebAppExam.Domain.Enum;
 using WebAppExam.Domain.Events;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Orders.Commands;
 
-public class DeleteOrderCommandHandler : IRequestHandler<DeleteOrderCommand, Ulid>
+public class CancelOrderCommandHandler : IRequestHandler<CancelOrderCommand, Ulid>
 {
-    private readonly IOrderRepository _orderRepository;
-    private readonly ICacheService _cacheService;
-    private readonly IInventoryReservationService _inventoryReservationService;
+    public readonly IOrderRepository _orderRepository;
+    public readonly IInventoryReservationService _inventoryReservationService;
 
-    public DeleteOrderCommandHandler(
-        IOrderRepository orderRepository,
-        ICacheService cacheService,
-        IInventoryReservationService inventoryReservationService)
+
+    public CancelOrderCommandHandler(IOrderRepository orderRepository, IInventoryReservationService inventoryReservationService)
     {
         _orderRepository = orderRepository;
-        _cacheService = cacheService;
         _inventoryReservationService = inventoryReservationService;
     }
 
-    public async Task<Ulid> Handle(DeleteOrderCommand request, CancellationToken cancellationToken)
+    public async Task<Ulid> Handle(CancelOrderCommand request, CancellationToken cancellationToken)
     {
         var order = await _orderRepository.GetByIdAsync(request.Id, cancellationToken);
 
@@ -34,13 +32,15 @@ public class DeleteOrderCommandHandler : IRequestHandler<DeleteOrderCommand, Uli
             throw new FluentValidation.ValidationException(new[] { failure });
         }
 
-        order.DeleteOrder();
+        var statusPrevious = order.Status;
 
+        order.UpdateOrderStatus(OrderStatus.Updating, "Updating...");
         _orderRepository.Update(order);
 
-        var orderDeletedEvent = new OrderDeletedEvent
+        var orderCanceledEvent = new OrderCanceledEvent
         {
             OrderId = order.Id.ToString(),
+            Status = statusPrevious,
             Items = order.Details.Select(x => new OrderItemEvent
             {
                 ProductId = x.ProductId.ToString(),
@@ -49,7 +49,7 @@ public class DeleteOrderCommandHandler : IRequestHandler<DeleteOrderCommand, Uli
             }).ToList()
         };
 
-        order.AddEventDomain(orderDeletedEvent);
+        order.AddEventDomain(orderCanceledEvent);
 
         order.AddEventDomain(new OrderCreatedIntegrationEvent(order.Id, -order.TotalAmount, DateTime.UtcNow, -1));
 
@@ -65,10 +65,8 @@ public class DeleteOrderCommandHandler : IRequestHandler<DeleteOrderCommand, Uli
             await _inventoryReservationService.ReleaseStocksAsync(itemsToRelease);
         }
 
-        itemsToRelease.ForEach(x => order.RemoveItem(x.ProductId, x.WareHouseId));
-
-        await _cacheService.RemoveByPrefixAsync($"order_detail:{request.Id}");
 
         return order.Id;
+
     }
 }

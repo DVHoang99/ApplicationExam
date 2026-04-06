@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.EntityFrameworkCore;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Enum;
@@ -50,7 +51,7 @@ public class OrderRepository : Repository<Order>, IOrderRepository
     {
         return await _dbSet
             .Include(o => o.Details)
-            .Where(o => o.CreatedAt.Date == date.Date && o.DeletedAt == null)
+            .Where(o => o.CreatedAt.Date == date.Date && o.DeletedAt == null && o.Status != OrderStatus.Canceled)
             .ToListAsync();
     }
 

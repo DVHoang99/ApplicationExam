@@ -1,5 +1,3 @@
-using System;
-using Confluent.Kafka;
 using MediatR;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Orders.DTOs;
@@ -35,7 +33,6 @@ public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, Order
                 ProductId = x.ProductId,
                 Quantity = x.Quantity,
                 Price = x.Price,
-                //InventoryId = x.InventoryId
             }).ToList();
 
             var res = new OrderDto

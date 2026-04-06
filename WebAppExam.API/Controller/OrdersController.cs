@@ -87,4 +87,12 @@ public class OrdersController : ControllerBase
         await _mediator.Send(command);
         return NoContent();
     }
+
+    [HttpPost("{id}/canceled")]
+    public async Task<IActionResult> Cancel(Ulid id)
+    {
+        var command = new CancelOrderCommand(id);
+        var res = await _mediator.Send(command);
+        return Ok(new { data = res });
+    }
 }

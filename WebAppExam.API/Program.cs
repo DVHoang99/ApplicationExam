@@ -45,6 +45,7 @@ builder.Services.AddKafka(kafka => kafka
         .CreateTopicIfNotExists("order-created-topic", 3, 1)
         .CreateTopicIfNotExists("order-updated-topic", 3, 1)
         .CreateTopicIfNotExists("order-deleted-topic", 3, 1)
+        .CreateTopicIfNotExists("order-canceled-topic", 3, 1)
         .AddProducer(
             "order-events-producer",
             producer => producer
@@ -73,6 +74,12 @@ builder.Services.AddKafka(kafka => kafka
             "order-deleted-producer",
             producer => producer
                     .DefaultTopic("order-deleted-topic")
+                    .AddMiddlewares(middlewares => middlewares.AddSerializer<JsonCoreSerializer>())
+        )
+        .AddProducer(
+            "order-canceled-producer",
+            producer => producer
+                    .DefaultTopic("order-canceled-topic")
                     .AddMiddlewares(middlewares => middlewares.AddSerializer<JsonCoreSerializer>())
         )
         .AddConsumer(consumer => consumer
@@ -113,6 +120,17 @@ builder.Services.AddKafka(kafka => kafka
             .AddMiddlewares(middlewares => middlewares
                 .AddSingleTypeDeserializer<OrderReplyDTO, JsonCoreDeserializer>()
                 .AddTypedHandlers(h => h.AddHandler<OrderUpdatedReplyHandler>())
+            )
+        )
+
+        .AddConsumer(consumer => consumer
+            .Topic("order-canceled-reply-topic")
+            .WithGroupId("order-canceled-reply-topic-group")
+            .WithWorkersCount(2)
+            .WithBufferSize(100)
+            .AddMiddlewares(middlewares => middlewares
+                .AddSingleTypeDeserializer<OrderReplyDTO, JsonCoreDeserializer>()
+                .AddTypedHandlers(h => h.AddHandler<OrderCanceledReplyHandler>())
             )
         )
     )
@@ -219,11 +237,12 @@ using (var scope = app.Services.CreateScope())
 {
     var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
 
-    // recurringJobManager.AddOrUpdate<RevenueBackgroundJob>(
-    //     "daily-revenue-calculation",
-    //     job => job.RunDailyCalculation(),
-    //     "* * * * *"
-    // );
+    recurringJobManager.AddOrUpdate<RevenueBackgroundJob>(
+        "daily-revenue-calculation",
+        job => job.RunDailyCalculation(),
+        //"* * * * *"
+        "59 23 * * *"
+    );
 
     // recurringJobManager.AddOrUpdate<InventoryReconciliationJob>(
     //     "reconcile-pending-products",

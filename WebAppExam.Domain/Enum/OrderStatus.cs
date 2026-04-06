@@ -3,9 +3,10 @@ namespace WebAppExam.Domain.Enum;
 public enum OrderStatus
 {
     Draft = 0,
-    Cancel = 1,
+    Canceled = 1,
     Pending = 2,
     WaitingForPayment = 3,
     Paid = 4,
-    Failed = 5
+    Failed = 5,
+    Updating = 6
 }

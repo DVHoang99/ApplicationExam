@@ -29,6 +29,11 @@ public class GetAllCustomerQueryHandler : IRequestHandler<GetAllCustomerQuery, L
             query = _customerRepository.GetCustomerByPhoneNumberQuery(query, request.PhoneNumber);
         }
 
+        if (request.PageSize > 0 && request.PageNumber > 0)
+        {
+            query = _customerRepository.PaginationQuery(query, request.PageNumber, request.PageSize, ct);
+        }
+
         var customers = await _customerRepository.ToListAsync(query, ct);
 
         return customers.Select(x => new CustomerDTO

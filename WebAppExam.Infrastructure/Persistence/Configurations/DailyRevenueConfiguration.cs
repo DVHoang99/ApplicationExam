@@ -12,7 +12,6 @@ public class DailyRevenueConfiguration : IEntityTypeConfiguration<DailyRevenue>
         builder.ToTable("daily_revenues");
         builder.Ignore(x => x.Id);
         builder.Ignore(x => x.CreatedAt);
-        builder.Ignore(x => x.UpdatedAt);
         builder.Ignore(x => x.DeletedAt);
 
         builder.HasKey(x => x.Date);
@@ -24,6 +23,9 @@ public class DailyRevenueConfiguration : IEntityTypeConfiguration<DailyRevenue>
             .IsRequired();
 
         builder.Property(x => x.TotalRevenue)
+            .IsRequired();
+
+        builder.Property(x => x.UpdatedAt)
             .IsRequired();
     }
 }

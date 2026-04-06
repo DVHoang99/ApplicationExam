@@ -1,4 +1,6 @@
 using System;
+using System.Security.Cryptography.X509Certificates;
+using Microsoft.EntityFrameworkCore;
 using WebAppExam.Domain.Entity;
 using WebAppExam.Domain.Repository;
 using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
@@ -9,5 +11,11 @@ public class DailyRevenueRepository : Repository<DailyRevenue>, IDailyRevenueRep
 {
     public DailyRevenueRepository(AppDbContext context) : base(context)
     {
+
+
+    }
+    public async Task<DailyRevenue?> GetByKeyAsync(string id, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.FirstOrDefaultAsync(x => x.Date == id, cancellationToken);
     }
 }

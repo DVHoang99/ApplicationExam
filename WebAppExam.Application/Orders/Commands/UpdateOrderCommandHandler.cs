@@ -37,7 +37,6 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
             throw new FluentValidation.ValidationException(new[] { failure });
         }
 
-        // 1. Group incoming items to avoid duplicates
         var groupedItems = request.Items
             .GroupBy(x => new { x.ProductId, x.WareHouseId })
             .Select(g => new OrderItemDto
@@ -49,18 +48,15 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
             .OrderBy(x => x.ProductId)
             .ToList();
 
-        // 2. Fetch products to validate existence and get latest prices
         var allProductIds = groupedItems.Select(x => x.ProductId)
             .Union(order.Details.Select(x => x.ProductId)).ToList();
         var products = await _productRepository.GetProductByIdsAsync(allProductIds, ct);
 
-        // 3. CALCULATE INVENTORY DELTAS (Reserve vs Release)
         var itemsToReserve = new List<OrderItemDto>();
         var itemsToRelease = new List<OrderItemDto>();
 
         var requestKeys = groupedItems.Select(x => (x.ProductId, x.WareHouseId)).ToHashSet();
 
-        // 3.1. Find items completely removed from the order
         var itemsToDelete = order.Details
             .Where(dbItem => !requestKeys.Contains((dbItem.ProductId, dbItem.WareHouseId.ToString())))
             .ToList();
@@ -70,7 +66,6 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
             itemsToRelease.Add(new OrderItemDto { ProductId = del.ProductId, WareHouseId = del.WareHouseId.ToString(), Quantity = del.Quantity });
         }
 
-        // 3.2. Find items added or quantity increased/decreased
         foreach (var req in groupedItems)
         {
             if (!products.TryGetValue(req.ProductId, out var product))
@@ -96,12 +91,8 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
             }
         }
 
-        // ====================================================================
-        // 4. RESERVE NEW STOCK VIA REDIS (Atomic Transaction)
-        // ====================================================================
         if (itemsToReserve.Any())
         {
-            // If out of stock, this will throw an Exception and abort the update
             await _inventoryReservationService.ReserveStocksAsync(request.CustomerId, itemsToReserve);
         }
 
@@ -129,9 +120,6 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
 
             _orderRepository.Update(order);
 
-            // NOTE: I removed _productRepository.UpdateRange() because updating an order 
-            // should NOT blindly update products' master data in the Database. 
-
             // Attach Events
             var orderUpdateEvent = new OrderUpdatedEvent
             {
@@ -148,9 +136,6 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
             order.AddEventDomain(orderUpdateEvent);
             order.AddEventDomain(new OrderCreatedIntegrationEvent(order.Id, order.TotalAmount - oldTotalAmount, DateTime.UtcNow, 0));
 
-            // ====================================================================
-            // 5. RELEASE FREED STOCK BACK TO REDIS (Items removed/reduced)
-            // ====================================================================
             if (itemsToRelease.Any())
             {
                 await _inventoryReservationService.ReleaseStocksAsync(itemsToRelease);
@@ -163,7 +148,6 @@ public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Uli
         }
         catch (Exception ex)
         {
-            // ROLLBACK: If DB update fails, we must refund the items we JUST reserved in step 4
             if (itemsToReserve.Any())
             {
                 await _inventoryReservationService.ReleaseStocksAsync(itemsToReserve);

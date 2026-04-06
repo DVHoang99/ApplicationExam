@@ -46,4 +46,8 @@ public class CustomerRepository : Repository<Customer>, ICustomerRepository
     {
         return query.ToListAsync(cancellationToken);
     }
+    public IQueryable<Customer> PaginationQuery(IQueryable<Customer> query, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+    {
+        return query.Skip((pageNumber - 1) * pageSize).Take(pageSize);
+    }
 }
