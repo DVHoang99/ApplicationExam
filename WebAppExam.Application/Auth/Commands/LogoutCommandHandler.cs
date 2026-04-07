@@ -1,31 +1,23 @@
 using System;
+using FluentResults;
 using MediatR;
+using WebAppExam.Application.Auth.Services;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Auth.Commands;
 
-public class LogoutCommandHandler : IRequestHandler<LogoutCommand, string>
+public class LogoutCommandHandler : IRequestHandler<LogoutCommand, Result<string>>
 {
-    private readonly IUserRepository _userRepository;
+    private readonly IAuthService _authService;
 
-    public LogoutCommandHandler(IUserRepository userRepository)
+
+    public LogoutCommandHandler(IAuthService authService)
     {
-        _userRepository = userRepository;
+        _authService = authService;
     }
 
-    public async Task<string> Handle(LogoutCommand request, CancellationToken ct)
+    public async Task<Result<string>> Handle(LogoutCommand request, CancellationToken ct)
     {
-        var user = await _userRepository.GetByUsernameAsync(request.Username, ct);
-
-        if (user == null)
-        {
-            var failure = new FluentValidation.Results.ValidationFailure("Logout", "User not found");
-            throw new FluentValidation.ValidationException(new[] { failure });
-        }
-
-        user.UpdateRefeshToken(string.Empty, DateTime.MinValue);
-
-        _userRepository.Update(user);
-        return request.Username;
+        return await _authService.Logout(request.Username, ct);
     }
 }

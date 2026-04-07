@@ -45,13 +45,13 @@ public class GlobalExceptionHandler : IExceptionHandler
         try
         {
             var logProducer = _producerAccessor.GetProducer("system-logs-producer");
-            var logMessage = new LogMessageDTO
-            {
-                Level = "Fatal",
-                ServiceName = "WebAppExam.Api",
-                Message = $"[CRASH] {httpContext.Request.Method} {httpContext.Request.Path} failed: {exception.Message}",
-                Exception = exception.ToString(),
-            };
+            
+            var logMessage = LogMessageDTO.FromResult(
+                "Fatal",
+                "WebAppExam.Api",
+                $"[CRASH] {httpContext.Request.Method} {httpContext.Request.Path} failed: {exception.Message}",
+                exception.ToString()
+            );
 
             await logProducer.ProduceAsync(
                 "system-logs-topic",

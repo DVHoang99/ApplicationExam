@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using WebAppExam.Application.Common.Errors;
 using WebAppExam.Application.Customers.Command;
 using WebAppExam.Application.Customers.Commands;
 using WebAppExam.Application.Customers.DTOs;
@@ -23,10 +24,16 @@ namespace WebAppExam.API.Controller
         public async Task<IActionResult> Create([FromBody] CustomerDTO input)
         {
             var command = CreateCustomerCommand.Create(input.CustomerName, input.Email, input.Phone);
-            var id = await _mediator.Send(command);
+            var result = await _mediator.Send(command);
 
-            return Ok(new { data = id });
+            if (result.IsSuccess)
+            {
+                return Ok(result.Value);
+            }
+
+            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
         }
+
         [HttpGet]
         public async Task<IActionResult> GetAll(
             [FromQuery] string phoneNumber = "",
@@ -37,7 +44,12 @@ namespace WebAppExam.API.Controller
         {
             var query = GetAllCustomerQuery.GetAll(phoneNumber, customerName, pageNumber, pageSize);
             var result = await _mediator.Send(query);
-            return Ok(result);
+            if (result.IsSuccess)
+            {
+                return Ok(result.Value);
+            }
+
+            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
         }
 
         [HttpGet("{id}")]
@@ -45,7 +57,12 @@ namespace WebAppExam.API.Controller
         {
             var query = GetCustomerByIdQuery.Init(id);
             var result = await _mediator.Send(query);
-            return Ok(new { data = result });
+            if (result.IsSuccess)
+            {
+                return Ok(result.Value);
+            }
+
+            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
         }
 
         [HttpPut("{id}")]
@@ -54,7 +71,12 @@ namespace WebAppExam.API.Controller
             var command = UpdateCustomerCommand.Init(id, input.CustomerName, input.Email, input.Phone);
 
             var result = await _mediator.Send(command);
-            return Ok(new { data = result });
+            if (result.IsSuccess)
+            {
+                return Ok(result.Value);
+            }
+
+            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
         }
 
         [HttpDelete("{id}")]
@@ -62,8 +84,13 @@ namespace WebAppExam.API.Controller
         public async Task<IActionResult> Delete(Ulid id)
         {
             var command = DeleteCustomerCommand.Init(id);
-            await _mediator.Send(command);
-            return NoContent();
+            var result = await _mediator.Send(command);
+            if (result.IsSuccess)
+            {
+                return Ok(result.Value);
+            }
+
+            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
         }
     }
 }

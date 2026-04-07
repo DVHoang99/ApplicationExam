@@ -1,16 +1,14 @@
 using System;
+using FluentResults;
 using WebAppExam.Application.Shared;
 
 namespace WebAppExam.Application.Auth.Commands;
 
-public class LogoutCommand : ICommand<string>
+public class LogoutCommand(string username) : ICommand<Result<string>>
 {
-    public required string Username { get; set; }
-    public static LogoutCommand Logout(string userName)
+    public string Username { get; private set; } = username;
+    public static LogoutCommand Logout(string username)
     {
-        return new LogoutCommand
-        {
-            Username = userName
-        };
+        return new LogoutCommand(username);
     }
 }

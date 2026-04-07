@@ -58,12 +58,7 @@ public class RequestLoggingMiddleware
 
             logContent += $" | Responded {context.Response.StatusCode} in {stopwatch.ElapsedMilliseconds}ms";
 
-            var logMessage = new LogMessageDTO
-            {
-                Level = logLevel,
-                ServiceName = "WebAppExam.Api",
-                Message = logContent,
-            };
+            var logMessage = LogMessageDTO.FromResult(logLevel, "WebAppExam.Api", logContent, "");
 
             await logProducer.ProduceAsync(
                 "system-logs-topic",

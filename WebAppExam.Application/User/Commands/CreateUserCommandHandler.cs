@@ -1,31 +1,23 @@
 using System;
+using FluentResults;
 using MediatR;
 using WebAppExam.Application.Common.Helpers;
+using WebAppExam.Application.User.Services;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.User.Commands;
 
-public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Ulid>
+public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Result<Ulid>>
 {
-    private readonly IUserRepository _userRepository;
+    private readonly IUserService _userService;
 
-    public CreateUserCommandHandler(IUserRepository userRepository)
+    public CreateUserCommandHandler(IUserService userService)
     {
-        _userRepository = userRepository;
+        _userService = userService;
     }
 
-    public async Task<Ulid> Handle(CreateUserCommand request, CancellationToken ct)
+    public async Task<Result<Ulid>> Handle(CreateUserCommand request, CancellationToken ct)
     {
-        var user = await _userRepository.GetByUsernameAsync(request.Username, ct);
-
-        if (user != null)
-        {
-            var failure = new FluentValidation.Results.ValidationFailure("Username", "Username already exists");
-            throw new FluentValidation.ValidationException(new[] { failure });
-        }
-        var newUser = new Domain.Entity.User(request.Username, PasswordHelper.HashPassword(request.Password), request.Name, request.Role);
-        await _userRepository.AddAsync(newUser, ct);
-
-        return newUser.Id;
+        return await _userService.CreateUserAsync(request.Username, request.Password, request.Role, request.Name, ct);
     }
 }

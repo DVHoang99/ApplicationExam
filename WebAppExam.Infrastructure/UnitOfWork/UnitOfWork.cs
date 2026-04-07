@@ -10,6 +10,7 @@ using WebAppExam.Application.Services;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using WebAppExam.Domain.Entity;
 using MediatR;
+using WebAppExam.Domain;
 
 namespace WebAppExam.Infrastructure.UnitOfWork;
 
@@ -91,7 +92,7 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
     }
     private async Task PublishEvents(CancellationToken ct = default)
     {
-        var entitiesWithEvents = _context.ChangeTracker.Entries<AggregateRoot>()
+        var entitiesWithEvents = _context.ChangeTracker.Entries<EntityBase>()
             .Where(e => e.Entity.DomainEvents.Any())
             .Select(e => e.Entity).ToList();
 
@@ -135,12 +136,11 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
 
         foreach (var entry in entries)
         {
-            var auditMessage = new AuditLogMessageDTO
-            {
-                EntityName = entry.Metadata.Name.Split('.').Last(),
-                Timestamp = DateTime.UtcNow,
-                ChangedBy = _currentUserService.UserId,
-            };
+            var entityName = entry.Metadata.Name.Split('.').Last();
+            var timestamp = DateTime.UtcNow;
+            var changedBy = _currentUserService.UserId;
+            var primaryKey = string.Empty;
+            var action = string.Empty;
 
             var oldValues = new Dictionary<string, object?>();
             var newValues = new Dictionary<string, object?>();
@@ -153,18 +153,18 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
 
                 if (property.Metadata.IsPrimaryKey())
                 {
-                    auditMessage.PrimaryKey = property.CurrentValue?.ToString() ?? string.Empty;
+                    primaryKey = property.CurrentValue?.ToString();
                 }
 
                 switch (entry.State)
                 {
                     case EntityState.Added:
-                        auditMessage.Action = "Create";
+                        action = "Create";
                         newValues[propertyName] = property.CurrentValue;
                         break;
 
                     case EntityState.Deleted:
-                        auditMessage.Action = "Delete";
+                        action = "Delete";
                         oldValues[propertyName] = property.OriginalValue;
                         break;
 
@@ -172,7 +172,7 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
                         // Only track columns that actually changed
                         if (property.IsModified && !Equals(property.OriginalValue, property.CurrentValue))
                         {
-                            auditMessage.Action = "Update";
+                            action = "Update";
                             oldValues[propertyName] = property.OriginalValue;
                             newValues[propertyName] = property.CurrentValue;
                         }
@@ -185,8 +185,16 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
                 continue;
             }
 
-            auditMessage.OldValues = oldValues.Count > 0 ? JsonSerializer.Serialize(oldValues) : null;
-            auditMessage.NewValues = newValues.Count > 0 ? JsonSerializer.Serialize(newValues) : null;
+            var oldValuesString = oldValues.Count > 0 ? JsonSerializer.Serialize(oldValues) : null;
+            var newValuesString = newValues.Count > 0 ? JsonSerializer.Serialize(newValues) : null;
+
+            var auditMessage = AuditLogMessageDTO.FromResult(
+                entityName,
+                action,
+                primaryKey,
+                oldValuesString,
+                newValuesString
+            );
 
             auditEntries.Add(auditMessage);
         }

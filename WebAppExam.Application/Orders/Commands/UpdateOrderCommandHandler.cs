@@ -1,8 +1,10 @@
+using FluentResults;
 using MediatR;
 using WebAppExam.Application.Common;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Application.Orders.Events;
+using WebAppExam.Application.Orders.Services;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Enum;
 using WebAppExam.Domain.Events;
@@ -10,162 +12,18 @@ using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Orders.Commands;
 
-public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Ulid>
+public class UpdateOrderCommandHandler : IRequestHandler<UpdateOrderCommand, Result<Ulid>>
 {
-    private readonly IOrderRepository _orderRepository;
-    private readonly IProductRepository _productRepository;
-    private readonly ICacheService _cacheService;
-    private readonly IInventoryReservationService _inventoryReservationService;
-    private readonly IDailyRevenueRepository _dailyRepository;
+    private readonly IOrderService _orderService;
 
-
-    public UpdateOrderCommandHandler(IOrderRepository orderRepository,
-    ICacheService cacheService,
-    IProductRepository productRepository,
-    IInventoryReservationService inventoryReservationService,
-    IDailyRevenueRepository dailyRepository)
+    public UpdateOrderCommandHandler(
+    IOrderService orderService)
     {
-        _orderRepository = orderRepository;
-        _productRepository = productRepository;
-        _cacheService = cacheService;
-        _inventoryReservationService = inventoryReservationService;
-        _dailyRepository = dailyRepository;
+        _orderService = orderService;
     }
 
-    public async Task<Ulid> Handle(UpdateOrderCommand request, CancellationToken ct)
+    public async Task<Result<Ulid>> Handle(UpdateOrderCommand request, CancellationToken ct)
     {
-        var order = await _orderRepository.GetByIdAsync(request.Id, ct);
-        if (order == null)
-        {
-            var failure = new FluentValidation.Results.ValidationFailure("Order", "Order not found");
-            throw new FluentValidation.ValidationException(new[] { failure });
-        }
-
-        var groupedItems = request.Items
-            .GroupBy(x => new { x.ProductId, x.WareHouseId })
-            .Select(g => new OrderItemDto
-            {
-                ProductId = g.Key.ProductId,
-                WareHouseId = g.Key.WareHouseId,
-                Quantity = g.Sum(x => x.Quantity)
-            })
-            .OrderBy(x => x.ProductId)
-            .ToList();
-
-        var allProductIds = groupedItems.Select(x => x.ProductId)
-            .Union(order.Details.Select(x => x.ProductId)).ToList();
-        var products = await _productRepository.GetProductByIdsAsync(allProductIds, ct);
-
-        var itemsToReserve = new List<OrderItemDto>();
-        var itemsToRelease = new List<OrderItemDto>();
-
-        var requestKeys = groupedItems.Select(x => (x.ProductId, x.WareHouseId)).ToHashSet();
-
-        var itemsToDelete = order.Details
-            .Where(dbItem => !requestKeys.Contains((dbItem.ProductId, dbItem.WareHouseId.ToString())))
-            .ToList();
-
-        foreach (var del in itemsToDelete)
-        {
-            itemsToRelease.Add(new OrderItemDto { ProductId = del.ProductId, WareHouseId = del.WareHouseId.ToString(), Quantity = del.Quantity });
-        }
-
-        foreach (var req in groupedItems)
-        {
-            if (!products.TryGetValue(req.ProductId, out var product))
-            {
-                var failure = new FluentValidation.Results.ValidationFailure("Product", $"ProductId {req.ProductId} not found.");
-                throw new FluentValidation.ValidationException(new[] { failure });
-            }
-
-            var existingItem = order.Details.FirstOrDefault(x => x.ProductId == req.ProductId && x.WareHouseId.ToString() == req.WareHouseId);
-            var existingQty = existingItem?.Quantity ?? 0;
-
-            var delta = req.Quantity - existingQty;
-
-            if (delta > 0)
-            {
-                // User increased quantity (or new item) -> Need to reserve more
-                itemsToReserve.Add(new OrderItemDto { ProductId = req.ProductId, WareHouseId = req.WareHouseId, Quantity = delta });
-            }
-            else if (delta < 0)
-            {
-                // User decreased quantity -> Need to release the freed stock
-                itemsToRelease.Add(new OrderItemDto { ProductId = req.ProductId, WareHouseId = req.WareHouseId, Quantity = Math.Abs(delta) });
-            }
-        }
-
-        if (itemsToReserve.Any())
-        {
-            await _inventoryReservationService.ReserveStocksAsync(request.CustomerId, itemsToReserve);
-        }
-
-        try
-        {
-            var oldTotalAmount = order.TotalAmount;
-            order.UpdateOrderGeneralInformation(request.CustomerId, request.CustomerName, request.Address, request.PhoneNumber);
-
-            var itemUpdated = new List<OrderDetail>();
-
-            // Apply updates to Domain Model
-            foreach (var req in groupedItems)
-            {
-                var product = products[req.ProductId];
-                itemUpdated.Add(order.AddOrUpdateItem(req.ProductId, product.Price, req.Quantity, Ulid.Parse(req.WareHouseId)));
-            }
-
-            foreach (var del in itemsToDelete)
-            {
-                var removedItem = order.RemoveItem(del.ProductId, del.WareHouseId.ToString());
-                if (removedItem != null) itemUpdated.Add(removedItem);
-            }
-
-            order.UpdateOrderStatus(OrderStatus.Updating, "Updating...");
-
-            _orderRepository.Update(order);
-
-            var key = order.CreatedAt.Date.ToString("yyyy-MM-dd");
-            var dailyRevenue = await _dailyRepository.GetByKeyAsync(key, CancellationToken.None);
-            if (dailyRevenue != null && dailyRevenue.UpdatedAt > order.CreatedAt)
-            {
-                dailyRevenue.AddDailyRevenue(0, order.TotalAmount - oldTotalAmount);
-                _dailyRepository.Update(dailyRevenue);
-            }
-
-            // Attach Events
-            var orderUpdateEvent = new OrderUpdatedEvent
-            {
-                OrderId = order.Id.ToString(),
-                CustomerName = request.CustomerName,
-                Items = itemUpdated.Select(x => new OrderItemEvent
-                {
-                    ProductId = x.ProductId.ToString(),
-                    Quantity = x.Quantity, // This represents the delta/changed amount
-                    WareHouseId = x.WareHouseId.ToString()
-                }).ToList()
-            };
-
-            order.AddEventDomain(orderUpdateEvent);
-            order.AddEventDomain(new OrderCreatedIntegrationEvent(order.Id, order.TotalAmount - oldTotalAmount, DateTime.UtcNow, 0));
-
-            if (itemsToRelease.Any())
-            {
-                await _inventoryReservationService.ReleaseStocksAsync(itemsToRelease);
-            }
-
-            // Clear Cache
-            await _cacheService.RemoveByPrefixAsync($"order_detail:{request.Id}");
-
-            return order.Id;
-        }
-        catch (Exception ex)
-        {
-            if (itemsToReserve.Any())
-            {
-                await _inventoryReservationService.ReleaseStocksAsync(itemsToReserve);
-            }
-
-            throw new Exception("Error updating order. Reserved inventory has been successfully refunded.", ex);
-        }
+        return await _orderService.UpdateOrderAsync(request.Id, request.CustomerId, request.CustomerName, request.Address, request.PhoneNumber, request.Items, ct);
     }
 }

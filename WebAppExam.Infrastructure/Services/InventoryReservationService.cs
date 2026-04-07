@@ -28,7 +28,7 @@ public class InventoryReservationService : IInventoryReservationService
         _inventoryService = inventoryService;
     }
 
-    public async Task<bool> ReserveStocksAsync(Ulid customerId, List<OrderItemDto> itemsToReserve)
+    public async Task<bool> ReserveStocksAsync(Ulid customerId, List<OrderItemDTO> itemsToReserve)
     {
         var db = _redis.GetDatabase();
 
@@ -38,7 +38,7 @@ public class InventoryReservationService : IInventoryReservationService
 
         var cachedValues = await db.StringGetAsync(keys);
 
-        var missingItems = new List<OrderItemDto>();
+        var missingItems = new List<OrderItemDTO>();
         for (int i = 0; i < cachedValues.Length; i++)
         {
             if (cachedValues[i].IsNull)
@@ -109,7 +109,7 @@ public class InventoryReservationService : IInventoryReservationService
         });
     }
 
-    public async Task ReleaseStocksAsync(List<OrderItemDto> itemsToRelease)
+    public async Task ReleaseStocksAsync(List<OrderItemDTO> itemsToRelease)
     {
         var db = _redis.GetDatabase();
 

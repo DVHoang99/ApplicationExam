@@ -14,7 +14,7 @@ namespace WebAppExam.Infrastructure.Persistence.AppicationDbContext
         public DbSet<Order> Orders => Set<Order>();
         public DbSet<Product> Products => Set<Product>();
         public DbSet<Customer> Customers => Set<Customer>();
-        public DbSet<MonthlyRevenue> MonthlyRevenues { get; set; }
+        public DbSet<MonthlyRevenue> MonthlyRevenues { get; private set; }
         public static string FUnaccent(string input) => throw new NotSupportedException();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -1,42 +1,29 @@
 using System;
+using FluentResults;
 using MediatR;
 using WebAppExam.Application.Customers.Command;
+using WebAppExam.Application.Customers.Services;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Customers.Commands;
 
-public class CreateCustomerCommandHandler : IRequestHandler<CreateCustomerCommand, Ulid>
+public class CreateCustomerCommandHandler : IRequestHandler<CreateCustomerCommand, Result<Ulid>>
 {
-    private readonly ICustomerRepository _customerRepository;
+    private readonly ICustomerService _customerService;
+
 
     public CreateCustomerCommandHandler(
-        ICustomerRepository customerRepository)
+        ICustomerService customerService
+    )
     {
-        _customerRepository = customerRepository;
+        _customerService = customerService;
     }
 
-    public async Task<Ulid> Handle(CreateCustomerCommand request, CancellationToken ct)
+    public async Task<Result<Ulid>> Handle(CreateCustomerCommand request, CancellationToken ct)
     {
-        var customerByEmail = await _customerRepository.GetCustomerByEmailAsync(request.Email);
+        return await _customerService.CreateCustomerAync(request.CustomerName, request.Email, request.Phone, ct);
 
-        if (customerByEmail != null)
-        {
-            var failure = new FluentValidation.Results.ValidationFailure("Customer", "Customer already exists");
-            throw new FluentValidation.ValidationException(new[] { failure });
-        }
-
-        var customer = new Customer
-        {
-            Id = Ulid.NewUlid(),
-            CustomerName = request.CustomerName,
-            Email = request.Email,
-            PhoneNumber = request.Phone,
-            CreatedAt = DateTime.UtcNow,
-        };
-
-        await _customerRepository.AddAsync(customer, ct);
-        return customer.Id;
     }
 }
 

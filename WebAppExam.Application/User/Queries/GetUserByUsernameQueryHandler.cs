@@ -16,17 +16,7 @@ public class GetUserByUsernameQueryHandler : IRequestHandler<GetUserByUsernameQu
     public async Task<UserResponseDTO> Handle(GetUserByUsernameQuery request, CancellationToken cancellationToken)
     {
         var user = await _userRepository.GetByUsernameAsync(request.Username, cancellationToken);
-        if (user == null)
-        {
-            return null;
-        }
 
-        return new UserResponseDTO
-        {
-            Username = user.Username,
-            Name = user.Name,
-            Role = user.Role
-        };
+        return UserResponseDTO.FromResult(user);
     }
-
 }

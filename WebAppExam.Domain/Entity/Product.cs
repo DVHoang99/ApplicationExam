@@ -5,22 +5,18 @@ namespace WebAppExam.Domain
 {
     public class Product : EntityBase, IAggregateRoot
     {
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public int Price { get; set; }
-        public ProductStatus ProductStatus { get; set; }
-        public string CorrelationId { get; set; }
-        public string WareHouseId { get; set; }
+        public string Name { get; private set; } = string.Empty;
+        public string Description { get; private set; } = string.Empty;
+        public int Price { get; private set; }
+        public ProductStatus ProductStatus { get; private set; }
+        public string CorrelationId { get; private set; }
+        public string WareHouseId { get; private set; }
 
-        //private readonly List<Inventory> _inventories = new();
-        //public IReadOnlyCollection<Inventory> Inventories => _inventories.AsReadOnly();
-
-        protected Product() { }
-        public Product(string name, string description, int price, string correlationId, string wareHouseId)
+        private Product(string name, string? description, int price, string correlationId, string wareHouseId)
         {
             Id = Ulid.NewUlid();
             Name = name;
-            Description = description;
+            Description = description ?? "";
             Price = price;
             CreatedAt = DateTime.UtcNow;
             ProductStatus = ProductStatus.Pending;
@@ -28,10 +24,15 @@ namespace WebAppExam.Domain
             WareHouseId = wareHouseId;
         }
 
-        public void UpdateInformation(string name, string description, int price)
+        public static Product Init(string name, string? description, int price, string correlationId, string wareHouseId)
+        {
+            return new Product(name, description, price, correlationId, wareHouseId);
+        }
+        
+        public void UpdateInformation(string name, string? description, int price)
         {
             Name = name;
-            Description = description;
+            Description = description ?? "";
             Price = price;
             UpdatedAt = DateTime.UtcNow;
         }
@@ -41,6 +42,13 @@ namespace WebAppExam.Domain
             ProductStatus = status;
             UpdatedAt = DateTime.UtcNow;
         }
+
+        public void DeleteProduct()
+        {
+            DeletedAt = DateTime.UtcNow;
+            UpdatedAt = DateTime.UtcNow;
+        }
+    
 
         // public void AddOrUpdateInventory(Ulid inventoryId, int stock, Ulid productId, string inventoryName)
         // {

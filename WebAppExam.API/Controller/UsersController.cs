@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using WebAppExam.Application.Common.Errors;
 using WebAppExam.Application.User.Commands;
 using WebAppExam.Application.User.DTOs;
 using WebAppExam.Application.User.Queries;
@@ -21,15 +22,15 @@ namespace WebAppExam.API.Controller
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] UserDTO request)
         {
-            var command = new CreateUserCommand
-            {
-                Username = request.Username,
-                Password = request.Password,
-                Name = request.Name,
-                Role = request.Role
-            };
+            var command = CreateUserCommand.Init(request.Username, request.Password, request.Role, request.Name);
+
             var result = await _mediator.Send(command);
-            return Ok(new {id = result});
+            if (result.IsSuccess)
+            {
+                return Ok(result.Value);
+            }
+
+            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
         }
 
         // [HttpPut("{id}")]

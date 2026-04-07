@@ -1,74 +1,26 @@
+using FluentResults;
 using MediatR;
 using WebAppExam.Application.Common;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Application.Orders.Events;
+using WebAppExam.Application.Orders.Services;
 using WebAppExam.Domain.Events;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Orders.Commands;
 
-public class DeleteOrderCommandHandler : IRequestHandler<DeleteOrderCommand, Ulid>
+public class DeleteOrderCommandHandler : IRequestHandler<DeleteOrderCommand, Result<Ulid>>
 {
-    private readonly IOrderRepository _orderRepository;
-    private readonly ICacheService _cacheService;
-    private readonly IInventoryReservationService _inventoryReservationService;
+    private readonly IOrderService _orderService;
 
-    public DeleteOrderCommandHandler(
-        IOrderRepository orderRepository,
-        ICacheService cacheService,
-        IInventoryReservationService inventoryReservationService)
+    public DeleteOrderCommandHandler(IOrderService orderService)
     {
-        _orderRepository = orderRepository;
-        _cacheService = cacheService;
-        _inventoryReservationService = inventoryReservationService;
+        _orderService = orderService;
     }
 
-    public async Task<Ulid> Handle(DeleteOrderCommand request, CancellationToken cancellationToken)
+    public async Task<Result<Ulid>> Handle(DeleteOrderCommand request, CancellationToken cancellationToken)
     {
-        var order = await _orderRepository.GetByIdAsync(request.Id, cancellationToken);
-
-        if (order == null)
-        {
-            var failure = new FluentValidation.Results.ValidationFailure("Order", "Order not found.");
-            throw new FluentValidation.ValidationException(new[] { failure });
-        }
-
-        order.DeleteOrder();
-
-        _orderRepository.Update(order);
-
-        var orderDeletedEvent = new OrderDeletedEvent
-        {
-            OrderId = order.Id.ToString(),
-            Items = order.Details.Select(x => new OrderItemEvent
-            {
-                ProductId = x.ProductId.ToString(),
-                Quantity = -x.Quantity,
-                WareHouseId = x.WareHouseId.ToString()
-            }).ToList()
-        };
-
-        order.AddEventDomain(orderDeletedEvent);
-
-        order.AddEventDomain(new OrderCreatedIntegrationEvent(order.Id, -order.TotalAmount, DateTime.UtcNow, -1));
-
-        var itemsToRelease = order.Details.Select(x => new OrderItemDto
-        {
-            ProductId = x.ProductId,
-            WareHouseId = x.WareHouseId.ToString(),
-            Quantity = x.Quantity
-        }).ToList();
-
-        if (itemsToRelease.Any())
-        {
-            await _inventoryReservationService.ReleaseStocksAsync(itemsToRelease);
-        }
-
-        itemsToRelease.ForEach(x => order.RemoveItem(x.ProductId, x.WareHouseId));
-
-        await _cacheService.RemoveByPrefixAsync($"order_detail:{request.Id}");
-
-        return order.Id;
+        return await _orderService.DeleteOrderAsync(request.Id, cancellationToken);
     }
 }

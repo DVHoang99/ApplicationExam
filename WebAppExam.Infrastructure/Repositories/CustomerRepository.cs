@@ -22,7 +22,7 @@ public class CustomerRepository : Repository<Customer>, ICustomerRepository
         return await _context.Customers.FirstOrDefaultAsync(x => x.Email == email && x.DeletedAt == null);
     }
 
-    public async Task<List<Customer>> FindAsync(Expression<Func<Customer, bool>> predicate, CancellationToken cancellationToken = default)
+    public new async Task<List<Customer>> FindAsync(Expression<Func<Customer, bool>> predicate, CancellationToken cancellationToken = default)
     {
         return await _context.Customers.Where(predicate).ToListAsync(cancellationToken);
     }

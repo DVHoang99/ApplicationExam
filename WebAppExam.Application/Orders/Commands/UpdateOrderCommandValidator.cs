@@ -5,7 +5,7 @@ namespace WebAppExam.Application.Orders.Commands;
 
 public class UpdateOrderCommandValidator : AbstractValidator<UpdateOrderCommand>
 {
-    public class OrderItemDtoValidator : FluentValidation.AbstractValidator<DTOs.OrderItemDto>
+    public class OrderItemDtoValidator : FluentValidation.AbstractValidator<DTOs.OrderItemDTO>
     {
         public OrderItemDtoValidator()
         {

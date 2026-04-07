@@ -7,9 +7,9 @@ namespace WebAppExam.Application.User.Commands
     public class UpdateUserCommand(string username) : ICommand<Ulid>
     {
         public string Username { get; } = username;
-        public string Name { get; set; }
-        public string Role { get; set; }
-        public string Password { get; set; }
-        
+        public string Name { get; private set; }
+        public string Role { get; private set; }
+        public string Password { get; private set; }
+
     }
 }

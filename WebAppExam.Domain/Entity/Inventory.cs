@@ -4,9 +4,9 @@
 
 // public class Inventory : EntityBase
 // {
-//     public Ulid ProductId { get; set; }
-//     public string Name { get; set; }
-//     public int Stock { get; set; }
+//     public Ulid ProductId { get; private set; }
+//     public string Name { get; private set; }
+//     public int Stock { get; private set; }
 
 //     protected Inventory()
 //     {

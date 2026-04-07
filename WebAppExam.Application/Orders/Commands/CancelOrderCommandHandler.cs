@@ -1,72 +1,20 @@
-using System;
+using FluentResults;
 using MediatR;
-using Microsoft.AspNetCore.Mvc;
-using WebAppExam.Application.Common;
-using WebAppExam.Application.Orders.DTOs;
-using WebAppExam.Application.Orders.Events;
-using WebAppExam.Domain.Enum;
-using WebAppExam.Domain.Events;
-using WebAppExam.Domain.Repository;
+using WebAppExam.Application.Orders.Services;
 
 namespace WebAppExam.Application.Orders.Commands;
 
-public class CancelOrderCommandHandler : IRequestHandler<CancelOrderCommand, Ulid>
+public class CancelOrderCommandHandler : IRequestHandler<CancelOrderCommand, Result<Ulid>>
 {
-    public readonly IOrderRepository _orderRepository;
-    public readonly IInventoryReservationService _inventoryReservationService;
+    private readonly IOrderService _orderService;
 
-
-    public CancelOrderCommandHandler(IOrderRepository orderRepository, IInventoryReservationService inventoryReservationService)
+    public CancelOrderCommandHandler(IOrderService orderService)
     {
-        _orderRepository = orderRepository;
-        _inventoryReservationService = inventoryReservationService;
+        _orderService = orderService;
     }
 
-    public async Task<Ulid> Handle(CancelOrderCommand request, CancellationToken cancellationToken)
+    public async Task<Result<Ulid>> Handle(CancelOrderCommand request, CancellationToken cancellationToken)
     {
-        var order = await _orderRepository.GetByIdAsync(request.Id, cancellationToken);
-
-        if (order == null || order.Status == OrderStatus.Canceled)
-        {
-            var failure = new FluentValidation.Results.ValidationFailure("Order", "Order not found.");
-            throw new FluentValidation.ValidationException(new[] { failure });
-        }
-
-        var statusPrevious = order.Status;
-
-        order.UpdateOrderStatus(OrderStatus.Updating, "Updating...");
-        _orderRepository.Update(order);
-
-        var orderCanceledEvent = new OrderCanceledEvent
-        {
-            OrderId = order.Id.ToString(),
-            Status = statusPrevious,
-            Items = order.Details.Select(x => new OrderItemEvent
-            {
-                ProductId = x.ProductId.ToString(),
-                Quantity = -x.Quantity,
-                WareHouseId = x.WareHouseId.ToString()
-            }).ToList()
-        };
-
-        order.AddEventDomain(orderCanceledEvent);
-
-        order.AddEventDomain(new OrderCreatedIntegrationEvent(order.Id, -order.TotalAmount, DateTime.UtcNow, -1));
-
-        var itemsToRelease = order.Details.Select(x => new OrderItemDto
-        {
-            ProductId = x.ProductId,
-            WareHouseId = x.WareHouseId.ToString(),
-            Quantity = x.Quantity
-        }).ToList();
-
-        if (itemsToRelease.Any())
-        {
-            await _inventoryReservationService.ReleaseStocksAsync(itemsToRelease);
-        }
-
-
-        return order.Id;
-
+        return await _orderService.CancelOrderAsync(request.Id, cancellationToken);
     }
 }

@@ -1,35 +1,19 @@
-using System;
+using FluentResults;
 using MediatR;
-using WebAppExam.Application.Common.Caching;
-using WebAppExam.Domain.Repository;
+using WebAppExam.Application.Customers.Services;
 
 namespace WebAppExam.Application.Customers.Commands;
 
-public class UpdateCustomerCommandHandler : IRequestHandler<UpdateCustomerCommand, Ulid>
+public class UpdateCustomerCommandHandler : IRequestHandler<UpdateCustomerCommand, Result<Ulid>>
 {
-    private readonly ICustomerRepository _customerRepository;
-    private readonly ICacheService _cacheService;
+    private readonly ICustomerService _customerService;
 
-    public UpdateCustomerCommandHandler(ICustomerRepository customerRepository, ICacheService cacheService)
+    public UpdateCustomerCommandHandler(ICustomerService customerService)
     {
-        _customerRepository = customerRepository;
-        _cacheService = cacheService;
+        _customerService = customerService;
     }
-    public async Task<Ulid> Handle(UpdateCustomerCommand request, CancellationToken ct)
+    public async Task<Result<Ulid>> Handle(UpdateCustomerCommand request, CancellationToken ct)
     {
-        var customer = await _customerRepository.GetByIdAsync(request.Id, ct);
-
-        if (customer == null)
-        {
-            var failure = new FluentValidation.Results.ValidationFailure("Customer", "Customer not found");
-            throw new FluentValidation.ValidationException(new[] { failure });
-        }
-
-        customer.CustomerName = request.CustomerName;
-        customer.Email = request.Email;
-        customer.PhoneNumber = request.Phone;
-        _customerRepository.Update(customer);
-        await _cacheService.RemoveByPrefixAsync($"customer_detail:{request.Id}");
-        return customer.Id;
+        return await _customerService.UpdateCustomerAsync(request.Id, request.CustomerName, request.Email, request.Phone, ct);
     }
 }

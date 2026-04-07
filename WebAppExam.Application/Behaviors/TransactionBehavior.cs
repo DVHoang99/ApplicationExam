@@ -26,7 +26,7 @@ public class TransactionBehavior<TRequest, TResponse> : IPipelineBehavior<TReque
 
             return response;
         }
-        catch (Exception ex)
+        catch
         {
             await _unitOfWork.RollbackAsync();
             throw;

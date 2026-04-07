@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using WebAppExam.Application.Common.Errors;
 using WebAppExam.Application.Orders.Commands;
 using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Application.Orders.Queries;
@@ -18,11 +19,16 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] OrderDto input)
+    public async Task<IActionResult> Create([FromBody] OrderDTO input)
     {
         var command = CreateOrderCommand.Init(input);
-        var id = await _mediator.Send(command);
-        return Ok(new { data = id });
+        var result = await _mediator.Send(command);
+        if (result.IsSuccess)
+        {
+            return Ok(result.Value);
+        }
+
+        return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
     }
 
     [HttpGet]
@@ -37,7 +43,12 @@ public class OrdersController : ControllerBase
     {
         var query = GetAllOrdersQuery.Init(fromDate, toDate, customerName, phoneNumber, pageNumber, pageSize);
         var result = await _mediator.Send(query);
-        return Ok(new { data = result });
+        if (result.IsSuccess)
+        {
+            return Ok(result.Value);
+        }
+
+        return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
     }
 
     [HttpGet("{id}")]
@@ -45,31 +56,51 @@ public class OrdersController : ControllerBase
     {
         var query = GetOrderByIdQuery.Init(id);
         var result = await _mediator.Send(query);
-        return Ok(new { data = result });
+        if (result.IsSuccess)
+        {
+            return Ok(result.Value);
+        }
+
+        return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(Ulid id, [FromBody] OrderDto input)
+    public async Task<IActionResult> Update(Ulid id, [FromBody] OrderDTO input)
     {
         var command = UpdateOrderCommand.Init(id, input);
 
         var result = await _mediator.Send(command);
-        return Ok(new { data = result });
+        if (result.IsSuccess)
+        {
+            return Ok(result.Value);
+        }
+
+        return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Ulid id)
     {
         var command = DeleteOrderCommand.Init(id);
-        await _mediator.Send(command);
-        return NoContent();
+        var result = await _mediator.Send(command);
+        if (result.IsSuccess)
+        {
+            return Ok(result.Value);
+        }
+
+        return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
     }
 
     [HttpPost("{id}/canceled")]
     public async Task<IActionResult> Cancel(Ulid id)
     {
         var command = CancelOrderCommand.Init(id);
-        var res = await _mediator.Send(command);
-        return Ok(new { data = res });
+        var result = await _mediator.Send(command);
+        if (result.IsSuccess)
+        {
+            return Ok(result.Value);
+        }
+
+        return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
     }
 }

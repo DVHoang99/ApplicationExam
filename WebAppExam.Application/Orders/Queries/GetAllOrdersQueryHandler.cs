@@ -1,59 +1,30 @@
 using System;
+using FluentResults;
 using MediatR;
 using WebAppExam.Application.Orders.DTOs;
+using WebAppExam.Application.Orders.Services;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Orders.Queries;
 
-public class GetAllOrdersQueryHandler : IRequestHandler<GetAllOrdersQuery, List<OrderDto>>
+public class GetAllOrdersQueryHandler : IRequestHandler<GetAllOrdersQuery, Result<List<OrderDTO>>>
 {
-    private readonly IOrderRepository _orderRepository;
+    private readonly IOrderService _orderService;
 
-    public GetAllOrdersQueryHandler(IOrderRepository orderRepository)
+    public GetAllOrdersQueryHandler(IOrderService orderService)
     {
-        _orderRepository = orderRepository;
+        _orderService = orderService;
     }
 
-    public async Task<List<OrderDto>> Handle(GetAllOrdersQuery request, CancellationToken cancellationToken)
+    public async Task<Result<List<OrderDTO>>> Handle(GetAllOrdersQuery request, CancellationToken cancellationToken)
     {
-        var query = _orderRepository.Query();
-
-        if (request.FromDate != null && request.ToDate != null)
-        {
-            query = _orderRepository.GetOrderFromDateToDateAsync(query, request.FromDate.Value, request.ToDate.Value);
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.CustomerName))
-        {
-            query = _orderRepository.GetOrderByCustomerNameQuery(query, request.CustomerName);
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
-        {
-            query = _orderRepository.GetOrderByPhoneNumberQuery(query, request.PhoneNumber);
-        }
-
-        query = query.Skip((request.pageNumber - 1) * request.pageSize).Take(request.pageSize);
-
-        var maps = await _orderRepository.ToListAsync(query, cancellationToken);
-
-        return maps.Select(order => new OrderDto
-        {
-            Id = order.Id,
-            CustomerId = order.CustomerId,
-            Status = order.Status,
-            TotalAmount = order.TotalAmount,
-            CustomerName = order.CustomerName,
-            Address = order.Address,
-            PhoneNumber = order.PhoneNumber,
-            CreatedAt = order.CreatedAt,
-            Details = order.Details.Select(x => new OrderDetailDto
-            {
-                ProductId = x.ProductId,
-                Quantity = x.Quantity,
-                Price = x.Price,
-                //InventoryId = x.InventoryId
-            }).ToList()
-        }).ToList();
+        return await _orderService.GetAllOrdersAsync(
+            request.FromDate,
+            request.ToDate,
+            request.CustomerName,
+            request.PhoneNumber,
+            request.pageNumber,
+            request.pageSize,
+            cancellationToken);
     }
 }

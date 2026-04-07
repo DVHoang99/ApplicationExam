@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
+    <PackageReference Include="FluentResults" Version="4.0.0" />
     <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="KafkaFlow" Version="4.2.0" />
@@ -24,12 +25,15 @@
     <Folder Include="Auth\DTOs\" />
     <Folder Include="Auth\Services\" />
     <Folder Include="Behaviors\" />
+    <Folder Include="Common\Errors\" />
     <Folder Include="Common\Helpers\" />
     <Folder Include="Customers\Commands\" />
     <Folder Include="Customers\DTOs\" />
     <Folder Include="Customers\Queries\" />
+    <Folder Include="Customers\Services\" />
     <Folder Include="Logger\Handlers\" />
     <Folder Include="Orders\Consumers\" />
+    <Folder Include="Orders\Services\" />
     <Folder Include="Products\Commands\" />
     <Folder Include="Products\Queries\" />
     <Folder Include="Products\Services\" />
@@ -38,6 +42,7 @@
     <Folder Include="Shared\" />
     <Folder Include="UnitOfWork\" />
     <Folder Include="User\DTOs\" />
+    <Folder Include="User\Services\" />
   </ItemGroup>
 
   <ItemGroup>

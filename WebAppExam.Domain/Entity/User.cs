@@ -4,22 +4,25 @@ namespace WebAppExam.Domain.Entity;
 
 public class User : EntityBase
 {
-    public string Username { get; set; } = string.Empty;
-    public string PasswordHash { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Role { get; set; } = "User";
-    public string? RefreshToken { get; set; }
-    public DateTime RefreshTokenExpiryTime { get; set; }
+    public string Username { get; private set; }
+    public string PasswordHash { get; private set; }
+    public string Name { get; private set; }
+    public string Role { get; private set; }
+    public string? RefreshToken { get; private set; }
+    public DateTime RefreshTokenExpiryTime { get; private set; }
 
-    protected User() { }
-
-    public User(string username, string passwordHash, string name, string role)
+    private User(string username, string passwordHash, string name, string role)
     {
         Username = username;
         PasswordHash = passwordHash;
         Name = name;
         Role = role;
         CreatedAt = DateTime.UtcNow;
+    }
+
+    public static User Create(string username, string passwordHash, string name, string role)
+    {
+        return new User(username, passwordHash, name, role);
     }
 
     public void UpdateUser(string passwordHash, string name, string role)
@@ -41,6 +44,4 @@ public class User : EntityBase
     {
         DeletedAt = DateTime.UtcNow;
     }
-
-    
 }

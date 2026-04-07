@@ -10,8 +10,8 @@ public class OrderCreatedIntegrationEvent(
         int counter
     ) : IDomainEvent
 {
-    public Ulid OrderId { get; set; } = OrderId;
-    public decimal Amount { get; set; } = Amount;
-    public DateTime OccurredOn { get; set; } = OccurredOn;
-    public int Counter { get; set; } = counter;
+    public Ulid OrderId { get; private set; } = OrderId;
+    public decimal Amount { get; private set; } = Amount;
+    public DateTime OccurredOn { get; private set; } = OccurredOn;
+    public int Counter { get; private set; } = counter;
 }

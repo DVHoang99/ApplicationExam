@@ -7,7 +7,7 @@ namespace WebAppExam.Application.Orders.Commands;
 
 public class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
 {
-        public class OrderItemDtoValidator : AbstractValidator<OrderItemDto>
+        public class OrderItemDtoValidator : AbstractValidator<OrderItemDTO>
         {
                 public OrderItemDtoValidator()
                 {

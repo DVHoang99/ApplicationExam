@@ -12,12 +12,12 @@ public class ProductRepository : Repository<Product>, IProductRepository
 
     }
 
-    public async Task AddAsync(Product product, CancellationToken cancellationToken = default)
+    public new async Task AddAsync(Product product, CancellationToken cancellationToken = default)
     {
         await _context.Products.AddAsync(product, cancellationToken);
     }
 
-    public void Update(Product product)
+    public new void Update(Product product)
     {
         _context.Products.Update(product);
     }
@@ -30,11 +30,10 @@ public class ProductRepository : Repository<Product>, IProductRepository
     public new async Task<Product?> GetByIdAsync(Ulid id, CancellationToken cancellationToken = default)
     {
         return await _context.Products
-            //.Include(p => p.Inventories)
             .FirstOrDefaultAsync(x => x.Id == id && x.DeletedAt == null, cancellationToken);
     }
 
-    public async Task<List<Product>> GetAllAsync(CancellationToken cancellationToken = default)
+    public new async Task<List<Product>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         return await _context.Products.ToListAsync(cancellationToken);
     }

@@ -1,10 +1,11 @@
 using System;
+using FluentResults;
 using MediatR;
 using WebAppExam.Application.Products.DTOs;
 
 namespace WebAppExam.Application.Products.Queries;
 
-public class GetAllProductQuery(string searchTerm, int pageNumber, int pageSize) : IRequest<List<ProductDTO>>
+public class GetAllProductQuery(string searchTerm, int pageNumber, int pageSize) : IRequest<Result<List<ProductDTO>>>
 {
     public string SearchTerm { get; private set; } = searchTerm;
     public int PageNumber { get; private set; } = pageNumber;

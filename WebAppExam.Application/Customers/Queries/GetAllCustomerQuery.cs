@@ -1,15 +1,15 @@
+using FluentResults;
 using MediatR;
 using WebAppExam.Application.Customers.DTOs;
-using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Customers.Queries;
 
-public class GetAllCustomerQuery(string phoneNumber, string customerName, int pageNumber, int pageSize) : IRequest<List<CustomerDTO>>
+public class GetAllCustomerQuery(string phoneNumber, string customerName, int pageNumber, int pageSize) : IRequest<Result<List<CustomerDTO>>>
 {
-    public string PhoneNumber { get; set; } = phoneNumber;
-    public string CustomerName { get; set; } = customerName;
-    public int PageNumber { get; set; } = pageNumber;
-    public int PageSize { get; set; } = pageSize;
+    public string PhoneNumber { get; private set; } = phoneNumber;
+    public string CustomerName { get; private set; } = customerName;
+    public int PageNumber { get; private set; } = pageNumber;
+    public int PageSize { get; private set; } = pageSize;
 
     public static GetAllCustomerQuery GetAll(string phoneNumber, string customerName, int pageNumber, int pageSize)
     {

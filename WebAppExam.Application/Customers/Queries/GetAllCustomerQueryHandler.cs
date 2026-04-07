@@ -1,47 +1,22 @@
 using System;
+using FluentResults;
 using MediatR;
 using WebAppExam.Application.Customers.DTOs;
-using WebAppExam.Domain.Repository;
+using WebAppExam.Application.Customers.Services;
 
 namespace WebAppExam.Application.Customers.Queries;
 
-public class GetAllCustomerQueryHandler : IRequestHandler<GetAllCustomerQuery, List<CustomerDTO>>
+public class GetAllCustomerQueryHandler : IRequestHandler<GetAllCustomerQuery, Result<List<CustomerDTO>>>
 {
-    private readonly ICustomerRepository _customerRepository;
+    private readonly ICustomerService _customerService;
 
-    public GetAllCustomerQueryHandler(ICustomerRepository customerRepository)
+    public GetAllCustomerQueryHandler(ICustomerService customerService)
     {
-        _customerRepository = customerRepository;
+        _customerService = customerService;
     }
 
-
-    public async Task<List<CustomerDTO>> Handle(GetAllCustomerQuery request, CancellationToken ct)
+    public async Task<Result<List<CustomerDTO>>> Handle(GetAllCustomerQuery request, CancellationToken ct)
     {
-        var query = _customerRepository.Query().Where(x => x.DeletedAt == null);
-
-        if (!string.IsNullOrWhiteSpace(request.CustomerName))
-        {
-            query = _customerRepository.GetCustomerByCustomerNameQuery(query, request.CustomerName);
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
-        {
-            query = _customerRepository.GetCustomerByPhoneNumberQuery(query, request.PhoneNumber);
-        }
-
-        if (request.PageSize > 0 && request.PageNumber > 0)
-        {
-            query = _customerRepository.PaginationQuery(query, request.PageNumber, request.PageSize, ct);
-        }
-
-        var customers = await _customerRepository.ToListAsync(query, ct);
-
-        return customers.Select(x => new CustomerDTO
-        {
-            Id = x.Id,
-            CustomerName = x.CustomerName,
-            Email = x.Email,
-            Phone = x.PhoneNumber
-        }).ToList();
+        return await _customerService.GetAllCustomersAsync(request.PhoneNumber, request.CustomerName, request.PageNumber, request.PageSize, ct);
     }
 }

@@ -1,46 +1,20 @@
-using System;
+using FluentResults;
 using MediatR;
-using Microsoft.AspNetCore.DataProtection.KeyManagement.Internal;
-using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Customers.DTOs;
-using WebAppExam.Domain;
-using WebAppExam.Domain.Repository;
+using WebAppExam.Application.Customers.Services;
 
 namespace WebAppExam.Application.Customers.Queries;
 
-public class GetCustomerByIdQueryHandler : IRequestHandler<GetCustomerByIdQuery, CustomerDTO>
+public class GetCustomerByIdQueryHandler : IRequestHandler<GetCustomerByIdQuery, Result<CustomerDTO>>
 {
-    private readonly ICustomerRepository _customerRepository;
-    private readonly ICacheService _cacheService;
+    private readonly ICustomerService _customerService;
 
-
-    public GetCustomerByIdQueryHandler(ICustomerRepository customerRepository, ICacheService cacheService)
+    public GetCustomerByIdQueryHandler(ICustomerService customerService)
     {
-        _cacheService = cacheService;
-        _customerRepository = customerRepository;
+        _customerService = customerService;
     }
-    public async Task<CustomerDTO> Handle(GetCustomerByIdQuery request, CancellationToken ct)
+    public async Task<Result<CustomerDTO>> Handle(GetCustomerByIdQuery request, CancellationToken ct)
     {
-
-        var customer = await _cacheService.GetAsync($"customer_detail:{request.Id}", async () =>
-        {
-            var customer = await _customerRepository.GetByIdAsync(request.Id, ct);
-
-            if (customer == null)
-            {
-                var failure = new FluentValidation.Results.ValidationFailure("Customer", "Customer not found");
-                throw new FluentValidation.ValidationException(new[] { failure });
-            }
-            return new CustomerDTO
-            {
-                Id = customer.Id,
-                CustomerName = customer.CustomerName,
-                Email = customer.Email,
-                Phone = customer.PhoneNumber
-            };
-        }, TimeSpan.FromDays(1), ct);
-
-
-        return customer ?? new CustomerDTO();
+        return await _customerService.GetCustomerByIdAsync(request.Id, ct);
     }
 }
