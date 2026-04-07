@@ -6,15 +6,14 @@ namespace WebAppExam.Application.Products.DTOs;
 public class GetBatchInventoryDTO
 {
     [JsonPropertyName("productId")]
-    public string ProductId { get; private set; }
+    public string ProductId { get; init; }
     [JsonPropertyName("stockQuantity")]
-    public int StockQuantity { get; private set; }
+    public int StockQuantity { get; init; }
     [JsonPropertyName("correlationId")]
 
-    public string CorrelationId { get; private set; }
+    public string CorrelationId { get; init; }
     [JsonPropertyName("wareHouseId")]
-    public string WareHouseId { get; private set; }
+    public string WareHouseId { get; init; }
     [JsonPropertyName("wareHouse")]
-    public WareHouseDTO WareHouse { get; private set; }
-
+    public WareHouseDTO WareHouse { get; init; }
 }

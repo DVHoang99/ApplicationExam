@@ -34,7 +34,8 @@ public class CalculateDailyRevenueCommandHandler : IRequestHandler<CalculateDail
             var query = _orderRepository.Query();
             query = query.Where(x => x.Status != OrderStatus.Canceled);
 
-            query = _orderRepository.GetOrderFromDateToDateAsync(query, dailyRevenue.UpdatedAt.Value, today);
+            var updatedDate = dailyRevenue.UpdatedAt.HasValue ? dailyRevenue.UpdatedAt.Value : today;
+            query = _orderRepository.GetOrderFromDateToDateAsync(query, updatedDate, today);
 
             var orders = await _orderRepository.ToListAsync(query, cancellationToken);
 

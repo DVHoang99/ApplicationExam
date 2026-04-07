@@ -6,15 +6,15 @@ namespace WebAppExam.Application.Products.DTOs;
 public class WareHouseDTO
 {
     [JsonPropertyName("id")]
-    public string Id { get; private set; }
+    public string Id { get; init; }
     [JsonPropertyName("address")]
-    public string Address { get; private set; }
+    public string Address { get; init; }
     [JsonPropertyName("ownerName")]
-    public string OwerName { get; private set; }
+    public string OwerName { get; init; }
     [JsonPropertyName("ownerEmail")]
-    public string OwerEmail { get; private set; }
+    public string OwerEmail { get; init; }
     [JsonPropertyName("ownerPhone")]
-    public string OwerPhone { get; private set; }
+    public string OwerPhone { get; init; }
 
     private WareHouseDTO(string id, string address, string ownerName, string ownerEmail, string ownerPhone)
     {

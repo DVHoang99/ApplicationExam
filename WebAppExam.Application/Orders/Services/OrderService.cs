@@ -39,7 +39,7 @@ public class OrderService : IOrderService
 
     public async Task<Result<Ulid>> CreateOrderAsync(Ulid customerId, string address, string phoneNumber, string customerName, List<OrderItemDTO> items, CancellationToken cancellationToken = default)
     {
-        if (items == null || items.Count > 0)
+        if (items == null || items.Count == 0)
         {
             return Result.Fail("Cart is empty, cannot create order!");
         }
