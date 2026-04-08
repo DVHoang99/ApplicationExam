@@ -16,7 +16,7 @@ public class OrderCanceledEventHandler : INotificationHandler<OrderCanceledEvent
 
     public async Task Handle(OrderCanceledEvent message, CancellationToken cancellationToken)
     {
-        var producer = _producerAccessor.GetProducer("order-canceled-producer");
+        var producer = _producerAccessor.GetProducer(Constants.KafkaProducer.OrderProducer);
 
         await producer.ProduceAsync(
            $"{Constants.KafkaPrefix.OrderCreatedPrefix}:{message.OrderId}",

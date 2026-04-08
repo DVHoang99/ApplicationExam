@@ -6,9 +6,10 @@ namespace WebAppExam.Application.Orders.DTOs;
 
 public class OrderReplyDTO
 {
-    public Ulid OrderId { get; private set; }
-    public OrderStatus Status { get; private set; }
-    public string Reason { get; private set; }
-    public List<OrderDetailDTO> Data { get; private set; } = new();
+    public Ulid OrderId { get; init; }
+    public OrderStatus Status { get; init; }
+    public string Reason { get; init; }
+    public string Action {get; init;}
+    public List<OrderDetailDTO> Data { get; init; }
 
 }

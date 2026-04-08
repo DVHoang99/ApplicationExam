@@ -11,8 +11,13 @@
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.23" />
     <PackageReference Include="Hangfire.Core" Version="1.8.23" />
     <PackageReference Include="Hangfire.PostgreSql" Version="1.21.1" />
+    <PackageReference Include="KafkaFlow" Version="4.2.0" />
+    <PackageReference Include="KafkaFlow.LogHandler.Console" Version="4.2.0" />
+    <PackageReference Include="KafkaFlow.Microsoft.DependencyInjection" Version="4.2.0" />
+    <PackageReference Include="KafkaFlow.Serializer.JsonCore" Version="4.2.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -35,7 +40,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Common\" />
     <Folder Include="Exceptions\" />
     <Folder Include="Jobs\" />
     <Folder Include="Services\" />

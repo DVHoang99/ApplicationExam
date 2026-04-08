@@ -18,7 +18,7 @@ namespace WebAppExam.Application.Orders.EventHandlers
         }
         public async Task Handle(OrderDeletedEvent message, CancellationToken cancellationToken)
         {
-            var producer = _producerAccessor.GetProducer("order-deleted-producer");
+            var producer = _producerAccessor.GetProducer(Constants.KafkaProducer.OrderProducer);
 
             await producer.ProduceAsync(
                 $"{Constants.KafkaPrefix.OrderDeletedPrefix}:{message.OrderId}",

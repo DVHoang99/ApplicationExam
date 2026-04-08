@@ -7,8 +7,6 @@ using WebAppExam.Application.Logger.DTOs;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using WebAppExam.Application.Services;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
-using WebAppExam.Domain.Entity;
 using MediatR;
 using WebAppExam.Domain;
 
