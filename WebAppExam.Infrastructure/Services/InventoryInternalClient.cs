@@ -2,10 +2,13 @@ using System;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Grpc.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.VisualBasic;
 using WebAppExam.Application.Products.DTOs;
 using WebAppExam.Application.Products.Services;
+using WebAppExam.Infrastructure.Protos;
 
 namespace WebAppExam.Infrastructure.Services;
 
@@ -14,19 +17,22 @@ public class InventoryInternalClient : IInventoryService
     private readonly HttpClient _httpClient;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IConfiguration _configuration;
+    private readonly InventoryGrpc.InventoryGrpcClient _inventoryGrpcClient;
 
     public InventoryInternalClient(
         HttpClient httpClient,
         IHttpContextAccessor httpContextAccessor,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        InventoryGrpc.InventoryGrpcClient inventoryGrpcClient)
     {
         _httpClient = httpClient;
         _httpClient.BaseAddress = new Uri("http://localhost:5134/");
         _httpContextAccessor = httpContextAccessor;
         _configuration = configuration;
+        _inventoryGrpcClient = inventoryGrpcClient;
     }
 
-    public async Task<InventoryDTO?> CreateInventoryAsync(string wareHouseId, string productId, int stock, string correlationId, CancellationToken cancellationToken = default)
+    public async Task<Application.Products.DTOs.InventoryDTO?> CreateInventoryAsync(string wareHouseId, string productId, int stock, string correlationId, CancellationToken cancellationToken = default)
     {
         var payload = new
         {
@@ -42,7 +48,7 @@ public class InventoryInternalClient : IInventoryService
         {
             var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
             var node = JsonNode.Parse(jsonString);
-            return node?["data"].Deserialize<InventoryDTO>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return node?["data"].Deserialize<Application.Products.DTOs.InventoryDTO>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
 
         var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -123,6 +129,73 @@ public class InventoryInternalClient : IInventoryService
         catch (HttpRequestException ex)
         {
             throw new Exception($"Kết nối đến Service Inventory thất bại: {ex.Message}");
+        }
+    }
+
+    public async Task<List<GetBatchInventoryDTO>?> GetInventoryDTOsByIdsAsync(List<string> productIds, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+
+            var token = string.Empty;
+            var context = _httpContextAccessor.HttpContext;
+            if (context != null && context.Request.Headers.TryGetValue("Authorization", out var authHeader))
+            {
+                token = authHeader.ToString();
+            }
+
+            var request = new GetBatchInventoriesRequest();
+
+            if (productIds != null && productIds.Any())
+            {
+                request.Ids.AddRange(productIds);
+            }
+
+            var headers = new Metadata
+            {
+                { "Authorization", $"{token}" }
+            };
+
+            var response = await _inventoryGrpcClient.GetBatchInventoriesAsync(request, headers: headers, cancellationToken: cancellationToken);
+
+            if (response?.Inventories == null) return null;
+
+            return response.Inventories.Select(x =>
+            {
+                var warehouseDto = x.WareHouse != null
+                ? Application.Products.DTOs.WareHouseDTO.Init(
+                    x.WareHouse.Id ?? "",
+                    x.WareHouse.Address ?? "",
+                    x.WareHouse.OwnerName ?? "",
+                    x.WareHouse.OwnerEmail ?? "",
+                    x.WareHouse.OwnerPhone ?? "")
+                : null;
+                return GetBatchInventoryDTO.Init(
+                    x.ProductId,
+                    x.StockQuantity,
+                    x.CorrelationId ?? "",
+                    x.WareHouseId ?? "",
+                    warehouseDto
+                );
+            }).ToList();
+        }
+        catch (RpcException ex)
+        {
+            throw new Exception($"gRPC communication failed. Status code: {ex.StatusCode}. Details: {ex.Status.Detail}");
+        }
+    }
+
+        public async Task CallInventoryToUpdateGrpc(string productId, string wareHouseId, int newStock, Guid updateEventId, CancellationToken cancellationToken = default)
+    {
+        var path = $"api/inventories/{productId}";
+        var payload = new { WareHouseId = wareHouseId, Stock = newStock, UpdateEventId = updateEventId };
+
+        var response = await SendInternalRequestAsync(HttpMethod.Put, path, payload, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new Exception($"Update failed: {response.StatusCode} - {error}");
         }
     }
 }

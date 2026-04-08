@@ -1,4 +1,3 @@
-using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,7 +6,6 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using KafkaFlow;
 using KafkaFlow.Serializer;
-
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Logger.Handlers;
 using WebAppExam.Application.Orders.Consumers;
@@ -22,7 +20,8 @@ using WebAppExam.Infrastructure.Repositories;
 using WebAppExam.Infrastructure.Services;
 using WebAppExam.API.Common.Kafka;
 using WebAppExam.Application.Products.Services;
-using WebAppExam.Application.Common; // Chứa Constants và MessageTypeResolver
+using WebAppExam.Application.Common;
+using WebAppExam.Infrastructure.Protos;
 
 namespace WebAppExam.Infrastructure;
 
@@ -84,6 +83,13 @@ public static class DependencyInjection
 
         // 7. KAFKA CONFIGURATION
         AddKafkaMessaging(services, configuration);
+
+        // 8. GRPC
+        var grpcServiceHost = configuration.GetSection("GrpcService")["InventoryService"] ?? "http://localhost:5000/";
+        var grpcUri = new Uri(grpcServiceHost);
+
+        services.AddGrpcClient<WarehouseGrpc.WarehouseGrpcClient>(o => o.Address = grpcUri);
+        services.AddGrpcClient<InventoryGrpc.InventoryGrpcClient>(o => o.Address = grpcUri);
 
         return services;
     }

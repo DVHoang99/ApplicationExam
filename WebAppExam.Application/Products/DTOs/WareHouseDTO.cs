@@ -10,28 +10,28 @@ public class WareHouseDTO
     [JsonPropertyName("address")]
     public string Address { get; init; }
     [JsonPropertyName("ownerName")]
-    public string OwerName { get; init; }
+    public string OwnerName { get; init; }
     [JsonPropertyName("ownerEmail")]
-    public string OwerEmail { get; init; }
+    public string OwnerEmail { get; init; }
     [JsonPropertyName("ownerPhone")]
-    public string OwerPhone { get; init; }
+    public string OwnerPhone { get; init; }
 
     private WareHouseDTO(string id, string address, string ownerName, string ownerEmail, string ownerPhone)
     {
         Id = id;
         Address = address;
-        OwerName = ownerName;
-        OwerEmail = ownerEmail;
-        OwerPhone = ownerPhone;
+        OwnerName = ownerName;
+        OwnerEmail = ownerEmail;
+        OwnerPhone = ownerPhone;
     }
 
     public WareHouseDTO()
     {
         Id = "";
         Address = "";
-        OwerName = "";
-        OwerEmail = "";
-        OwerPhone = "";
+        OwnerName = "";
+        OwnerEmail = "";
+        OwnerPhone = "";
     }
 
     public static WareHouseDTO Init(string id, string address, string ownerName, string ownerEmail, string ownerPhone)

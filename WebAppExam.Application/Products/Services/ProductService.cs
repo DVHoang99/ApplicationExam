@@ -41,7 +41,7 @@ public class ProductService : IProductService
 
         var product = Product.Init(name, description, price, correlationId, wareHouseId);
 
-        var wareHouse = await _wareHouseService.GetWareHouseAsync(wareHouseId, cancellationToken);
+        var wareHouse = await _wareHouseService.GetWareHouseGrpcAsync(wareHouseId, cancellationToken);
 
         if (wareHouse == null)
         {
@@ -76,17 +76,19 @@ public class ProductService : IProductService
 
         var products = await _productRepository.ToListAsync(query, cancellationToken);
 
-        var correlationIds = products.Select(x => x.CorrelationId).ToList();
+        var productIds = products.Select(x => x.Id.ToString()).ToList();
 
-        var inventories = await _inventoryService.GetInventoryDTOsAsync(correlationIds, cancellationToken);
+        //var inventories = await _inventoryService.GetInventoryDTOsAsync(correlationIds, cancellationToken);
 
-        var inventoriesDictionary = inventories.Count > 0 ? inventories.ToDictionary(x => x.CorrelationId, x => x) : null;
+        var inventories = await _inventoryService.GetInventoryDTOsByIdsAsync(productIds, cancellationToken);
+
+        var inventoriesDictionary = inventories != null && inventories.Count > 0 ? inventories.ToDictionary(x => x.CorrelationId, x => x) : null;
 
         return Result.Ok(products.Select(x =>
         {
             var inventory = inventoriesDictionary != null && inventoriesDictionary.ContainsKey(x.CorrelationId) ? inventoriesDictionary[x.CorrelationId] : null;
-            var wareHouseDTO = inventory != null
-            ? WareHouseDTO.Init(inventory.WareHouseId, inventory.WareHouse.Address, inventory.WareHouse.OwerName, inventory.WareHouse.OwerEmail, inventory.WareHouse.OwerPhone)
+            var wareHouseDTO = inventory != null && inventory.WareHouse != null
+            ? WareHouseDTO.Init(inventory.WareHouseId, inventory.WareHouse.Address, inventory.WareHouse.OwnerName, inventory.WareHouse.OwnerEmail, inventory.WareHouse.OwnerPhone)
             : null;
 
             return ProductDTO.Init
@@ -109,20 +111,31 @@ public class ProductService : IProductService
             return Result.Fail("Product not found.");
         }
 
-        var inventories = await _inventoryService.GetInventoryDTOsAsync(new List<string> { res.CorrelationId }, cancellationToken);
+        //var inventories = await _inventoryService.GetInventoryDTOsAsync(new List<string> { res.CorrelationId }, cancellationToken);
 
-        var inventoriesDictionary = inventories.Count > 0 ? inventories.ToDictionary(x => x.CorrelationId, x => x) : null;
+        var inventories = await _inventoryService.GetInventoryDTOsByIdsAsync(new List<string> { res.Id.ToString() }, cancellationToken);
+
+        var inventoriesDictionary = inventories != null && inventories.Count > 0 ? inventories.ToDictionary(x => x.CorrelationId, x => x) : null;
 
         var stock = inventoriesDictionary != null && inventoriesDictionary.ContainsKey(res.CorrelationId) ? inventoriesDictionary[res.CorrelationId].StockQuantity : 0;
 
-        var wareHouse = inventoriesDictionary != null && inventoriesDictionary.ContainsKey(res.CorrelationId)
-        ? WareHouseDTO.Init(
-            inventoriesDictionary[res.CorrelationId].WareHouseId,
-            inventoriesDictionary[res.CorrelationId].WareHouse.Address,
-            inventoriesDictionary[res.CorrelationId].WareHouse.OwerName,
-            inventoriesDictionary[res.CorrelationId].WareHouse.OwerEmail,
-            inventoriesDictionary[res.CorrelationId].WareHouse.OwerPhone)
-        : null;
+        WareHouseDTO? wareHouse = null;
+
+        if (inventoriesDictionary?.TryGetValue(res.CorrelationId, out var inv) == true)
+        {
+            var wh = inv.WareHouse;
+
+            if (wh != null)
+            {
+                wareHouse = WareHouseDTO.Init(
+                    inv.WareHouseId ?? "",
+                    wh.Address ?? "",
+                    wh.OwnerName ?? "",
+                    wh.OwnerEmail ?? "",
+                    wh.OwnerPhone ?? ""
+                );
+            }
+        }
 
         return Result.Ok(
             ProductDTO.Init(id, res.Name, res.Description, res.Price, res.WareHouseId, stock, wareHouse)

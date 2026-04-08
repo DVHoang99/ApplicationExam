@@ -11,6 +11,13 @@
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="Google.Protobuf" Version="3.34.1" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.76.0" />
+    <PackageReference Include="Grpc.Net.ClientFactory" Version="2.76.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.80.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.23" />
     <PackageReference Include="Hangfire.Core" Version="1.8.23" />
     <PackageReference Include="Hangfire.PostgreSql" Version="1.21.1" />
@@ -37,6 +44,11 @@
   <ItemGroup>
     <ProjectReference Include="..\WebAppExam.Application\WebAppExam.Application.csproj" />
     <ProjectReference Include="..\WebAppExam.Domain\WebAppExam.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Protos\Warehouses.proto" GrpcServices="Client" />
+    <Protobuf Include="Protos\Inventories.proto" GrpcServices="Client" />
   </ItemGroup>
 
   <ItemGroup>

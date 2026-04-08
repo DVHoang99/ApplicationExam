@@ -1,7 +1,4 @@
-using System;
-using System.Windows.Input;
 using FluentResults;
-using WebAppExam.Application.Products.DTOs;
 using WebAppExam.Application.Shared;
 
 namespace WebAppExam.Application.Products.Commands;
