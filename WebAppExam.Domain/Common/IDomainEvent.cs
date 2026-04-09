@@ -5,8 +5,3 @@ using WebAppExam.Domain.Entity;
 namespace WebAppExam.Domain.Entity;
 
 public interface IDomainEvent : INotification { }
-
-public abstract class AggregateRoot
-{
-    
-}

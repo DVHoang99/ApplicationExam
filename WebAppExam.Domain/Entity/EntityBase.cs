@@ -3,7 +3,7 @@
 namespace WebAppExam.Domain
 {
     public interface IAggregateRoot { }
-    public class EntityBase : AggregateRoot
+    public class EntityBase
     {
         public Ulid Id { get; set; } = Ulid.NewUlid();
         public DateTime CreatedAt { get; set; }
@@ -11,7 +11,6 @@ namespace WebAppExam.Domain
         public DateTime? DeletedAt { get; set; }
         private readonly List<IDomainEvent> _domainEvents = new();
         public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
-
         public void AddDomainEvent(IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
         public void ClearDomainEvents() => _domainEvents.Clear();
     }
