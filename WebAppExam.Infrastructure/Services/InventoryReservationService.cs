@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using MediatR;
 using StackExchange.Redis;
 using WebAppExam.Application.Common;
 using WebAppExam.Application.Common.Caching;

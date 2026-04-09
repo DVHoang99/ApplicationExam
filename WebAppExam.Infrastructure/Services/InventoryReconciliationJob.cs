@@ -28,9 +28,9 @@ public class InventoryReconciliationJob : IInventoryReconciliationJob
 
         foreach (var product in pendingProducts)
         {
-            var result = await _inventoryService.CreateInventoryAsync(
-                    product.WareHouseId,
+            var result = await _inventoryService.CreateInventoryGrpcAsync(
                     product.Id.ToString(),
+                    product.WareHouseId,
                     10,
                     product.CorrelationId);
 

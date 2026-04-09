@@ -88,4 +88,12 @@ public class OrderRepository : Repository<Order>, IOrderRepository
             .Include(o => o.Details)
             .FirstOrDefaultAsync(o => o.Id == orderId && o.DeletedAt == null && o.Status == status, cancellationToken);
     }
+
+    public async Task<IEnumerable<Order>> GetOrdersByDateRangeAsync(DateTime fromDate, DateTime toDate, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Include(o => o.Details)
+            .Where(o => o.CreatedAt >= fromDate && o.CreatedAt <= toDate && o.DeletedAt == null)
+            .ToListAsync(cancellationToken);
+    }
 }

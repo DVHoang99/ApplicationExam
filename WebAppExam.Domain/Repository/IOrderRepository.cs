@@ -4,8 +4,9 @@ namespace WebAppExam.Domain.Repository
 {
     public interface IOrderRepository : IRepository<Order>
     {
-        Task<List<Order>> GetByCustomerIdAsync(Ulid customerId); 
+        Task<List<Order>> GetByCustomerIdAsync(Ulid customerId);
         Task<IEnumerable<Order>> GetByDateAsync(DateTime date);
+        Task<IEnumerable<Order>> GetOrdersByDateRangeAsync(DateTime fromDate, DateTime toDate, CancellationToken cancellationToken = default);
         IQueryable<Order> GetOrderFromDateToDateAsync(IQueryable<Order> query, DateTime fromDate, DateTime toDate);
         IQueryable<Order> GetOrderByPhoneNumberQuery(IQueryable<Order> query, string searchTerm);
         IQueryable<Order> GetOrderByCustomerNameQuery(IQueryable<Order> query, string searchTerm);

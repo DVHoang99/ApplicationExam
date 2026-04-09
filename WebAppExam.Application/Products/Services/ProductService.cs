@@ -52,7 +52,7 @@ public class ProductService : IProductService
 
         await _uow.SaveChangesAsync(cancellationToken);
 
-        var inventoryResult = await _inventoryService.CreateInventoryAsync(wareHouse.Id, product.Id.ToString(), stock, correlationId, cancellationToken);
+        var inventoryResult = await _inventoryService.CreateInventoryGrpcAsync(product.Id.ToString(), wareHouse.Id, stock, correlationId, cancellationToken);
 
         if (inventoryResult.IsSuccess)
         {
@@ -159,7 +159,7 @@ public class ProductService : IProductService
 
         var updateEventId = Guid.NewGuid();
 
-        _jobService.Enqueue(() => _inventoryService.CallInventoryToUpdate(product.Id.ToString(), product.WareHouseId, stock, updateEventId));
+        _jobService.Enqueue(() => _inventoryService.CallInventoryToUpdateGrpc(product.Id.ToString(), product.WareHouseId, stock, updateEventId));
 
         return product.Id;
     }
@@ -180,7 +180,7 @@ public class ProductService : IProductService
         var key = Constants.CachePrefix.InventoriesStock(wareHouseId, id.ToString());
 
         await _cacheService.RemoveByPrefixAsync(key);
-        _jobService.Enqueue(() => _inventoryService.CallInventoryToDelete(product.Id.ToString(), product.WareHouseId, cancellationToken));
+        _jobService.Enqueue(() => _inventoryService.DeleteInventoryGrpcAsync(product.Id.ToString(), product.WareHouseId, cancellationToken));
         return product.Id;
     }
 }

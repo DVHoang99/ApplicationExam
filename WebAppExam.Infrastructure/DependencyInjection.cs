@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Http;
 using Hangfire;
 using Hangfire.PostgreSql;
 using KafkaFlow;
@@ -49,20 +50,33 @@ public static class DependencyInjection
         // 4. EXTERNAL / INTERNAL HTTP CLIENTS
         var inventoryServiceHost = configuration.GetSection("InternalService")["InventoryService"] ?? "http://localhost:5134/";
 
+        // Register HTTP context accessor for JWT token forwarding
+        services.AddHttpContextAccessor();
+
+        // Register HTTP client service first (needed for InventoryInternalClient)
+        services.AddScoped<IHttpClientService, HttpClientService>();
+
+        // Register HTTP clients for services that use raw HttpClient
         services.AddHttpClient<IWareHouseService, WarehouseInternalClient>(client =>
         {
             client.BaseAddress = new Uri(inventoryServiceHost);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
         });
 
-        services.AddHttpClient<IInventoryService, InventoryInternalClient>(client =>
+        // Register InventoryInternalClient as scoped service (uses IHttpClientService, not raw HttpClient)
+        services.AddScoped<IInventoryService>(sp =>
         {
-            client.BaseAddress = new Uri(inventoryServiceHost);
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            var httpClientService = sp.GetRequiredService<IHttpClientService>();
+            var grpcClient = sp.GetRequiredService<InventoryGrpc.InventoryGrpcClient>();
+            var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+            return new InventoryInternalClient(httpClientService, grpcClient, httpContextAccessor, configuration);
         });
 
         // 5. INFRASTRUCTURE SERVICES
         services.AddScoped<IJobService, HangfireJobService>();
+        services.AddScoped<IHangfireJobService, HangfireJobService>();
+        services.AddScoped<IRevenueCalculationService, RevenueCalculationService>();
+        services.AddScoped<IHangfireConfigurationService, HangfireConfigurationService>();
         services.AddScoped<IInventoryReservationService, InventoryReservationService>();
 
         // 6. HANGFIRE CONFIGURATION

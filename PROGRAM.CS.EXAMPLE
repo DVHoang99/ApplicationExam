@@ -1,0 +1,150 @@
+// ============================================
+// COMPLETE PROGRAM.CS EXAMPLE WITH HANGFIRE
+// ============================================
+// Copy this structure to your Program.cs file
+
+using WebAppExam.Application.Behaviors;
+using WebAppExam.Application.LoggerService;
+using WebAppExam.Infrastructure;
+using WebAppExam.Infrastructure.Extensions;  // ADD THIS
+using KafkaFlow;
+
+// 1. BUILD CONFIGURATION
+var builder = WebApplicationBuilder.CreateBuilder(args);
+var configuration = builder.Configuration;
+
+// 2. ADD SERVICES
+// Add core services
+builder.Services.AddControllers();
+builder.Services.AddSwaggerGen();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+    builder.AllowAnyOrigin()
+        .AllowAnyMethod()
+        .AllowAnyHeader());
+});
+
+// Add application and infrastructure layers
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(configuration);
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+// Add Kafka
+builder.Services.AddKafka()
+    .AddCluster(cluster => cluster
+        .WithBrokers(new[] { "localhost:9092" })
+    );
+
+// 3. BUILD APP
+var app = builder.Build();
+
+// 4. CONFIGURE MIDDLEWARE
+
+// Development middleware
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+// General middleware
+app.UseHttpsRedirection();
+app.UseCors("AllowAll");
+
+// ============================================
+// HANGFIRE CONFIGURATION (ADD THESE LINES)
+// ============================================
+
+// Configure and enable Hangfire Dashboard
+app.UseHangfireConfigured("/hangfire");
+
+// Initialize all recurring jobs
+await app.InitializeHangfireJobsAsync();
+
+// Optional: Check Hangfire server health
+if (app.IsHangfireHealthy())
+{
+    app.Logger.LogInformation("✓ Hangfire background job server is running");
+}
+else
+{
+    app.Logger.LogWarning("⚠ Hangfire background job server is NOT running");
+}
+
+// ============================================
+// END HANGFIRE SETUP
+// ============================================
+
+// Continue with other middleware
+app.UseAuthorization();
+
+// Map endpoints
+app.MapControllers();
+
+// Start Kafka consumer
+app.Services.GetRequiredService<IKafkaMessageBus>().StartAsync()
+    .GetAwaiter()
+    .GetResult();
+
+// 5. RUN APPLICATION
+app.Run();
+
+
+// ============================================
+// WHAT THIS DOES:
+// ============================================
+// 
+// 1. app.UseHangfireConfigured("/hangfire")
+//    - Adds Hangfire dashboard middleware
+//    - Available at: http://localhost:5000/hangfire
+//    - Enables real-time job monitoring
+//
+// 2. await app.InitializeHangfireJobsAsync()
+//    - Initializes 3 recurring jobs:
+//      ✓ Daily revenue calculation (1:00 AM UTC)
+//      ✓ Monthly revenue summary (2:00 AM UTC, 1st of month)
+//      ✓ Weekly revenue summary (3:00 AM UTC, Sunday)
+//    - Creates Hangfire tables in PostgreSQL if needed
+//    - Logs job setup information
+//
+// 3. app.IsHangfireHealthy()
+//    - Verifies Hangfire server is responding
+//    - Useful for monitoring/health checks
+//    - Returns true/false
+//
+// ============================================
+// WHAT'S NOW AVAILABLE:
+// ============================================
+//
+// Dashboard URL:
+//   Development: http://localhost:5000/hangfire
+//   Production: https://localhost:5001/hangfire
+//
+// Services available via DI:
+//   - IHangfireJobService (schedule jobs)
+//   - IRevenueCalculationService (business logic)
+//   - IHangfireConfigurationService (configuration)
+//
+// ============================================
+// USING HANGFIRE IN CONTROLLERS:
+// ============================================
+//
+// public class AdminController : ControllerBase
+// {
+//     private readonly IHangfireJobService _jobService;
+//     private readonly IRevenueCalculationService _revenueService;
+//
+//     [HttpPost("trigger-revenue")]
+//     public IActionResult TriggerRevenueCalc()
+//     {
+//         var jobId = _jobService.Enqueue(
+//             () => _revenueService.CalculateDailyRevenueAsync(
+//                 DateTime.UtcNow,
+//                 CancellationToken.None)
+//         );
+//         return Ok(new { jobId });
+//     }
+// }
+//
+// ============================================
