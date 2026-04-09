@@ -34,11 +34,7 @@ public static class DependencyInjection
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
         // 2. REDIS & CACHING
-        var redisConfig = configuration.GetSection("Redis")["Configuration"] ?? "localhost:6379";
-        services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConfig));
-        services.AddStackExchangeRedisCache(options => { options.Configuration = redisConfig; });
-
-        services.AddScoped<ICacheService, RedisCacheService>();
+        services.AddSingleton<ICacheService, RedisCacheService>();
         services.AddScoped<ICacheLockService, CacheLockService>();
 
         // 3. REPOSITORIES & UNIT OF WORK

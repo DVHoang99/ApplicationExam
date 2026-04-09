@@ -52,7 +52,7 @@ public class InventoryInternalClient : IInventoryService
         }
 
         var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-        throw new Exception($"Error call Service B (Create): {(int)response.StatusCode} - {errorContent}");
+        throw new BadHttpRequestException($"Error call Service B (Create): {(int)response.StatusCode} - {errorContent}");
     }
 
     public async Task<List<GetBatchInventoryDTO>> GetInventoryDTOsAsync(List<string> correlationIds, CancellationToken cancellationToken = default)
@@ -81,7 +81,7 @@ public class InventoryInternalClient : IInventoryService
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new Exception($"Update failed: {response.StatusCode} - {error}");
+            throw new BadHttpRequestException($"Update failed: {response.StatusCode} - {error}");
         }
     }
 
@@ -93,7 +93,7 @@ public class InventoryInternalClient : IInventoryService
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new Exception($"Delete failed: {response.StatusCode} - {error}");
+            throw new BadHttpRequestException($"Delete failed: {response.StatusCode} - {error}");
         }
     }
 
@@ -128,7 +128,7 @@ public class InventoryInternalClient : IInventoryService
         }
         catch (HttpRequestException ex)
         {
-            throw new Exception($"Kết nối đến Service Inventory thất bại: {ex.Message}");
+            throw new BadHttpRequestException($"Kết nối đến Service Inventory thất bại: {ex.Message}");
         }
     }
 
@@ -181,11 +181,11 @@ public class InventoryInternalClient : IInventoryService
         }
         catch (RpcException ex)
         {
-            throw new Exception($"gRPC communication failed. Status code: {ex.StatusCode}. Details: {ex.Status.Detail}");
+            throw new BadHttpRequestException($"gRPC communication failed. Status code: {ex.StatusCode}. Details: {ex.Status.Detail}");
         }
     }
 
-        public async Task CallInventoryToUpdateGrpc(string productId, string wareHouseId, int newStock, Guid updateEventId, CancellationToken cancellationToken = default)
+    public async Task CallInventoryToUpdateGrpc(string productId, string wareHouseId, int newStock, Guid updateEventId, CancellationToken cancellationToken = default)
     {
         var path = $"api/inventories/{productId}";
         var payload = new { WareHouseId = wareHouseId, Stock = newStock, UpdateEventId = updateEventId };
@@ -195,7 +195,7 @@ public class InventoryInternalClient : IInventoryService
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new Exception($"Update failed: {response.StatusCode} - {error}");
+            throw new BadHttpRequestException($"Update failed: {response.StatusCode} - {error}");
         }
     }
 }

@@ -1,9 +1,13 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using MediatR;
 using StackExchange.Redis;
 using WebAppExam.Application.Common;
+using WebAppExam.Application.Common.Caching;
+using WebAppExam.Application.Common.Enums; // Required for RedisDbType
 using WebAppExam.Application.Orders.DTOs;
-using WebAppExam.Application.Products.Queries;
 using WebAppExam.Application.Products.Services;
 using WebAppExam.Domain.Repository;
 
@@ -11,32 +15,35 @@ namespace WebAppExam.Infrastructure.Services;
 
 public class InventoryReservationService : IInventoryReservationService
 {
-    private readonly IConnectionMultiplexer _redis;
-    private readonly IMediator _mediator;
+    // Replaced IConnectionMultiplexer with ICacheService
+    private readonly ICacheService _cacheService;
     private readonly IProductRepository _productRepository;
     private readonly IInventoryService _inventoryService;
+    private readonly IDatabase _db;
+    private readonly IProductService _productService;
 
+
+    // Updated constructor to inject ICacheService
     public InventoryReservationService(
-        IConnectionMultiplexer redis,
-        IMediator mediator,
+        ICacheService cacheService,
         IProductRepository productRepository,
-        IInventoryService inventoryService)
+        IInventoryService inventoryService, IProductService productService)
     {
-        _redis = redis;
-        _mediator = mediator;
+        _cacheService = cacheService;
         _productRepository = productRepository;
         _inventoryService = inventoryService;
+        _db = _cacheService.GetDatabase(RedisDbType.Cache);
+        _productService = productService;
     }
 
     public async Task<bool> ReserveStocksAsync(Ulid customerId, List<OrderItemDTO> itemsToReserve)
     {
-        var db = _redis.GetDatabase();
 
         var keys = itemsToReserve
             .Select(x => (RedisKey)$"inventory:stock:{x.WareHouseId}:{x.ProductId}")
             .ToArray();
 
-        var cachedValues = await db.StringGetAsync(keys);
+        var cachedValues = await _db.StringGetAsync(keys);
 
         var missingItems = new List<OrderItemDTO>();
         for (int i = 0; i < cachedValues.Length; i++)
@@ -54,19 +61,24 @@ public class InventoryReservationService : IInventoryReservationService
 
             var products = await _productRepository.GetProductByIdsAndWareHouseIdsAsync(missingProductIds, missingWarehouseIds);
 
-            var correlationIds = products.Values.Select(x => x.CorrelationId).ToList();
+            var productIds = products.Values.Select(x => x.Id.ToString()).ToList();
 
-            var inventories = await _inventoryService.GetInventoryDTOsAsync(correlationIds);
+            //var inventories = await _inventoryService.GetInventoryDTOsAsync(correlationIds);
+
+            var inventories = await _inventoryService.GetInventoryDTOsByIdsAsync(productIds);
             var setCacheTasks = new List<Task>();
 
             foreach (var missingItem in missingItems)
             {
-                var stockInfo = inventories.FirstOrDefault(x => x.ProductId == missingItem.ProductId.ToString() && x.WareHouseId == missingItem.WareHouseId);
-                int stockQty = stockInfo != null ? stockInfo.StockQuantity : 0;
+                if (inventories != null && inventories.Count > 0)
+                {
+                    var stockInfo = inventories.FirstOrDefault(x => x.ProductId == missingItem.ProductId.ToString() && x.WareHouseId == missingItem.WareHouseId);
+                    int stockQty = stockInfo != null ? stockInfo.StockQuantity : 0;
 
-                var redisKey = (RedisKey)$"inventory:stock:{missingItem.WareHouseId}:{missingItem.ProductId}";
+                    var redisKey = (RedisKey)$"inventory:stock:{missingItem.WareHouseId}:{missingItem.ProductId}";
 
-                setCacheTasks.Add(db.StringSetAsync(redisKey, stockQty, TimeSpan.FromHours(24)));
+                    setCacheTasks.Add(_db.StringSetAsync(redisKey, stockQty, TimeSpan.FromHours(24)));
+                }
             }
             await Task.WhenAll(setCacheTasks);
         }
@@ -74,26 +86,26 @@ public class InventoryReservationService : IInventoryReservationService
         var values = itemsToReserve.Select(x => (RedisValue)x.Quantity).ToArray();
 
         var luaScript = @"
-            -- 1: Quét dry-run kiểm tra xem tất cả có đủ hàng không
+            -- 1: Scan dry-run to check if all items have enough stock
             for i = 1, #KEYS do
                 local currentStock = tonumber(redis.call('GET', KEYS[i]) or '0')
                 local requestedQty = tonumber(ARGV[i])
                 
                 if currentStock < requestedQty then
-                    return i -- Trả về số thứ tự (index 1-based) của món bị thiếu
+                    return i -- Return the 1-based index of the failing item
                 end
             end
 
-            -- 2: Nếu lọt xuống đây nghĩa là 100% đủ hàng -> Gõ búa trừ đồng loạt!
+            -- 2: If we reach here, it means 100% enough stock -> Deduct all at once!
             for i = 1, #KEYS do
                 local requestedQty = tonumber(ARGV[i])
                 redis.call('DECRBY', KEYS[i], requestedQty)
             end
 
-            return 0 -- thanh cong
+            return 0 -- Success
         ";
 
-        var result = await db.ScriptEvaluateAsync(luaScript, keys, values);
+        var result = await _db.ScriptEvaluateAsync(luaScript, keys, values);
         int statusCode = (int)result;
 
         if (statusCode == 0)
@@ -111,7 +123,8 @@ public class InventoryReservationService : IInventoryReservationService
 
     public async Task ReleaseStocksAsync(List<OrderItemDTO> itemsToRelease)
     {
-        var db = _redis.GetDatabase();
+        // Fetch the raw database for the Cache DB using the new service
+        var db = _cacheService.GetDatabase(RedisDbType.Cache);
 
         // Prepare list of Keys and Values (Quantity to refund)
         var keys = itemsToRelease.Select(x => (RedisKey)$"inventory:stock:{x.WareHouseId}:{x.ProductId}").ToArray();
@@ -127,6 +140,6 @@ public class InventoryReservationService : IInventoryReservationService
         ";
 
         // Execute Script (Fire and forget, no need to await result here)
-        await db.ScriptEvaluateAsync(luaScript, keys, values);
+        await _db.ScriptEvaluateAsync(luaScript, keys, values);
     }
 }

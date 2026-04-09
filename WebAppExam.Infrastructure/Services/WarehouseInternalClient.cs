@@ -87,7 +87,7 @@ public class WarehouseInternalClient : IWareHouseService
         }
         catch (RpcException ex)
         {
-            throw new Exception($"gRPC call failed. Error code: {ex.StatusCode}. Details: {ex.Status.Detail}");
+            throw new BadHttpRequestException($"gRPC call failed. Error code: {ex.StatusCode}. Details: {ex.Status.Detail}");
         }
     }
 }

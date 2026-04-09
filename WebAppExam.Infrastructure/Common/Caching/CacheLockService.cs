@@ -1,6 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using StackExchange.Redis;
 using WebAppExam.Application.Common.Caching;
+using WebAppExam.Application.Common.Enums; // Required for RedisDbType
 
 namespace WebAppExam.Infrastructure.Common.Caching;
 
@@ -9,9 +13,12 @@ public class CacheLockService : ICacheLockService
     private readonly IDatabase _redisDb;
     private const int MaxRetry = 3;
     private const int RetryDelayMs = 200;
-    public CacheLockService(IConnectionMultiplexer redis)
+
+    // FIX: Inject ICacheService instead of IConnectionMultiplexer
+    public CacheLockService(ICacheService cacheService)
     {
-        _redisDb = redis.GetDatabase();
+        // Get the specific database for Cache (Database 0)
+        _redisDb = cacheService.GetDatabase(RedisDbType.Cache);
     }
 
     public async Task<List<string>> AcquireMultipleLocksAsync(IEnumerable<string> lockKeys, string lockToken, TimeSpan expiry)
