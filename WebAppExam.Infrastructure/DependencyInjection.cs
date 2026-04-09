@@ -22,6 +22,7 @@ using WebAppExam.API.Common.Kafka;
 using WebAppExam.Application.Products.Services;
 using WebAppExam.Application.Common;
 using WebAppExam.Infrastructure.Protos;
+using Hangfire.Redis.StackExchange;
 
 namespace WebAppExam.Infrastructure;
 
@@ -84,9 +85,14 @@ public static class DependencyInjection
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(configuration.GetConnectionString("DefaultConnection")))
+            .UseRedisStorage(configuration.GetConnectionString("RedisConnection"), new RedisStorageOptions
+            {
+                Prefix = "hangfire:ecommerce:",
+                Db = 4
+            })
             .UseFilter(new AutomaticRetryAttribute { Attempts = 5 })
         );
+        
         services.AddHangfireServer();
         services.AddScoped<InventoryReconciliationJob, InventoryReconciliationJob>();
 
