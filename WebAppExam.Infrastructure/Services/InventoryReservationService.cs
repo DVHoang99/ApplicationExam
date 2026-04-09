@@ -8,6 +8,7 @@ using WebAppExam.Application.Common;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Common.Enums; // Required for RedisDbType
 using WebAppExam.Application.Orders.DTOs;
+using WebAppExam.Application.Products.DTOs;
 using WebAppExam.Application.Products.Services;
 using WebAppExam.Domain.Repository;
 
@@ -20,7 +21,6 @@ public class InventoryReservationService : IInventoryReservationService
     private readonly IProductRepository _productRepository;
     private readonly IInventoryService _inventoryService;
     private readonly IDatabase _db;
-    private readonly IProductService _productService;
 
 
     // Updated constructor to inject ICacheService
@@ -33,7 +33,6 @@ public class InventoryReservationService : IInventoryReservationService
         _productRepository = productRepository;
         _inventoryService = inventoryService;
         _db = _cacheService.GetDatabase(RedisDbType.Cache);
-        _productService = productService;
     }
 
     public async Task<bool> ReserveStocksAsync(Ulid customerId, List<OrderItemDTO> itemsToReserve)
@@ -65,7 +64,8 @@ public class InventoryReservationService : IInventoryReservationService
 
             //var inventories = await _inventoryService.GetInventoryDTOsAsync(correlationIds);
 
-            var inventories = await _inventoryService.GetInventoryDTOsByIdsAsync(productIds);
+            var inventoriesResult = await _inventoryService.GetInventoryDTOsByIdsAsync(productIds);
+            var inventories = inventoriesResult.IsSuccess ? inventoriesResult.Value : new List<GetBatchInventoryDTO>();
             var setCacheTasks = new List<Task>();
 
             foreach (var missingItem in missingItems)

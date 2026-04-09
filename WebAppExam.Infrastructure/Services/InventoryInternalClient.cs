@@ -1,38 +1,29 @@
 using System;
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Nodes;
+using FluentResults;
 using Grpc.Core;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
-using Microsoft.VisualBasic;
+using WebAppExam.Application.Common.Errors;
 using WebAppExam.Application.Products.DTOs;
 using WebAppExam.Application.Products.Services;
+using WebAppExam.Application.Services;
 using WebAppExam.Infrastructure.Protos;
 
 namespace WebAppExam.Infrastructure.Services;
 
 public class InventoryInternalClient : IInventoryService
 {
-    private readonly HttpClient _httpClient;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IConfiguration _configuration;
+    private readonly IHttpClientService _httpClientService;
     private readonly InventoryGrpc.InventoryGrpcClient _inventoryGrpcClient;
 
     public InventoryInternalClient(
-        HttpClient httpClient,
-        IHttpContextAccessor httpContextAccessor,
-        IConfiguration configuration,
+        IHttpClientService httpClientService,
         InventoryGrpc.InventoryGrpcClient inventoryGrpcClient)
     {
-        _httpClient = httpClient;
-        _httpClient.BaseAddress = new Uri("http://localhost:5134/");
-        _httpContextAccessor = httpContextAccessor;
-        _configuration = configuration;
+        _httpClientService = httpClientService;
+        _httpClientService.SetBaseAddress("http://localhost:5134/");
         _inventoryGrpcClient = inventoryGrpcClient;
     }
 
-    public async Task<Application.Products.DTOs.InventoryDTO?> CreateInventoryAsync(string wareHouseId, string productId, int stock, string correlationId, CancellationToken cancellationToken = default)
+    public async Task<Result<Application.Products.DTOs.InventoryDTO>> CreateInventoryAsync(string wareHouseId, string productId, int stock, string correlationId, CancellationToken cancellationToken = default)
     {
         var payload = new
         {
@@ -42,108 +33,75 @@ public class InventoryInternalClient : IInventoryService
             CorrelationId = correlationId
         };
 
-        var response = await SendInternalRequestAsync(HttpMethod.Post, "api/inventories", payload, cancellationToken);
+        var dto = await _httpClientService.SendAsync<Application.Products.DTOs.InventoryDTO>(
+            HttpMethod.Post, "api/inventories", payload, cancellationToken);
 
-        if (response.IsSuccessStatusCode)
+        if (dto != null)
         {
-            var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
-            var node = JsonNode.Parse(jsonString);
-            return node?["data"].Deserialize<Application.Products.DTOs.InventoryDTO>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return Result.Ok(dto);
         }
 
-        var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-        throw new BadHttpRequestException($"Error call Service B (Create): {(int)response.StatusCode} - {errorContent}");
+        return Result.Fail(ExternalServiceError.InventoryServiceError(500, "Failed to create inventory"));
     }
 
-    public async Task<List<GetBatchInventoryDTO>> GetInventoryDTOsAsync(List<string> correlationIds, CancellationToken cancellationToken = default)
+    public async Task<Result<List<GetBatchInventoryDTO>>> GetInventoryDTOsAsync(List<string> correlationIds, CancellationToken cancellationToken = default)
     {
         var payload = new { CorrelationIds = correlationIds };
-        var response = await SendInternalRequestAsync(HttpMethod.Post, "api/inventories/batch", payload, cancellationToken);
+        var result = await _httpClientService.SendAsync<List<GetBatchInventoryDTO>>(
+            HttpMethod.Post, "api/inventories/batch", payload, cancellationToken);
 
-        if (response.IsSuccessStatusCode)
-        {
-            var jsonString = await response.Content.ReadAsStringAsync(cancellationToken);
-            var node = JsonNode.Parse(jsonString);
-            return node?["data"]?.Deserialize<List<GetBatchInventoryDTO>>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-                   ?? new List<GetBatchInventoryDTO>();
-        }
-
-        return new List<GetBatchInventoryDTO>();
+        return Result.Ok(result ?? new List<GetBatchInventoryDTO>());
     }
 
-    public async Task CallInventoryToUpdate(string productId, string wareHouseId, int newStock, Guid updateEventId, CancellationToken cancellationToken = default)
+    public async Task<Result> CallInventoryToUpdate(string productId, string wareHouseId, int newStock, Guid updateEventId, CancellationToken cancellationToken = default)
     {
         var path = $"api/inventories/{productId}";
         var payload = new { WareHouseId = wareHouseId, Stock = newStock, UpdateEventId = updateEventId };
 
-        var response = await SendInternalRequestAsync(HttpMethod.Put, path, payload, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new BadHttpRequestException($"Update failed: {response.StatusCode} - {error}");
-        }
-    }
-
-    public async Task CallInventoryToDelete(string productId, string wareHouseId, CancellationToken cancellationToken = default)
-    {
-        var path = $"api/inventories/{productId}?wareHouseId={wareHouseId}";
-        var response = await SendInternalRequestAsync(HttpMethod.Delete, path, null, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new BadHttpRequestException($"Delete failed: {response.StatusCode} - {error}");
-        }
-    }
-
-    private async Task<HttpResponseMessage> SendInternalRequestAsync(
-        HttpMethod method,
-        string path,
-        object? payload = null,
-        CancellationToken ct = default)
-    {
-        var request = new HttpRequestMessage(method, path);
-
-        var internalKey = _configuration["InternalSettings:ApiKey"];
-        if (!string.IsNullOrEmpty(internalKey))
-        {
-            request.Headers.Add("X-Internal-Key", internalKey);
-        }
-
-        var context = _httpContextAccessor.HttpContext;
-        if (context != null && context.Request.Headers.TryGetValue("Authorization", out var authHeader))
-        {
-            request.Headers.TryAddWithoutValidation("Authorization", authHeader.ToString());
-        }
-
-        if (payload != null)
-        {
-            request.Content = JsonContent.Create(payload);
-        }
-
         try
         {
-            return await _httpClient.SendAsync(request, ct);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new BadHttpRequestException($"Kết nối đến Service Inventory thất bại: {ex.Message}");
-        }
-    }
+            var response = await _httpClientService.SendAsync(HttpMethod.Put, path, payload, cancellationToken);
 
-    public async Task<List<GetBatchInventoryDTO>?> GetInventoryDTOsByIdsAsync(List<string> productIds, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-
-            var token = string.Empty;
-            var context = _httpContextAccessor.HttpContext;
-            if (context != null && context.Request.Headers.TryGetValue("Authorization", out var authHeader))
+            if (!response.IsSuccessStatusCode)
             {
-                token = authHeader.ToString();
+                var error = await response.Content.ReadAsStringAsync(cancellationToken);
+                return Result.Fail(ExternalServiceError.InventoryServiceError((int)response.StatusCode, error));
             }
 
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ExternalServiceError.InventoryServiceError(500, ex.Message));
+        }
+    }
+
+    public async Task<Result> CallInventoryToDelete(string productId, string wareHouseId, CancellationToken cancellationToken = default)
+    {
+        var path = $"api/inventories/{productId}?wareHouseId={wareHouseId}";
+
+        try
+        {
+            var response = await _httpClientService.SendAsync(HttpMethod.Delete, path, null, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync(cancellationToken);
+                return Result.Fail(ExternalServiceError.InventoryServiceError((int)response.StatusCode, error));
+            }
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ExternalServiceError.InventoryServiceError(500, ex.Message));
+        }
+    }
+
+    public async Task<Result<List<GetBatchInventoryDTO>>> GetInventoryDTOsByIdsAsync(List<string> productIds, CancellationToken cancellationToken = default)
+    {
+        try
+        {
             var request = new GetBatchInventoriesRequest();
 
             if (productIds != null && productIds.Any())
@@ -151,16 +109,14 @@ public class InventoryInternalClient : IInventoryService
                 request.Ids.AddRange(productIds);
             }
 
-            var headers = new Metadata
-            {
-                { "Authorization", $"{token}" }
-            };
+            var headers = new Metadata();
 
             var response = await _inventoryGrpcClient.GetBatchInventoriesAsync(request, headers: headers, cancellationToken: cancellationToken);
 
-            if (response?.Inventories == null) return null;
+            if (response?.Inventories == null)
+                return Result.Ok(new List<GetBatchInventoryDTO>());
 
-            return response.Inventories.Select(x =>
+            var result = response.Inventories.Select(x =>
             {
                 var warehouseDto = x.WareHouse != null
                 ? Application.Products.DTOs.WareHouseDTO.Init(
@@ -178,24 +134,36 @@ public class InventoryInternalClient : IInventoryService
                     warehouseDto
                 );
             }).ToList();
+
+            return Result.Ok(result);
         }
         catch (RpcException ex)
         {
-            throw new BadHttpRequestException($"gRPC communication failed. Status code: {ex.StatusCode}. Details: {ex.Status.Detail}");
+            var statusCode = (int)ex.StatusCode;
+            return Result.Fail(ExternalServiceError.InventoryServiceError(statusCode, ex.Status.Detail));
         }
     }
 
-    public async Task CallInventoryToUpdateGrpc(string productId, string wareHouseId, int newStock, Guid updateEventId, CancellationToken cancellationToken = default)
+    public async Task<Result> CallInventoryToUpdateGrpc(string productId, string wareHouseId, int newStock, Guid updateEventId, CancellationToken cancellationToken = default)
     {
         var path = $"api/inventories/{productId}";
         var payload = new { WareHouseId = wareHouseId, Stock = newStock, UpdateEventId = updateEventId };
 
-        var response = await SendInternalRequestAsync(HttpMethod.Put, path, payload, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            var error = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new BadHttpRequestException($"Update failed: {response.StatusCode} - {error}");
+            var response = await _httpClientService.SendAsync(HttpMethod.Put, path, payload, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync(cancellationToken);
+                return Result.Fail(ExternalServiceError.InventoryServiceError((int)response.StatusCode, error));
+            }
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ExternalServiceError.InventoryServiceError(500, ex.Message));
         }
     }
 }

@@ -1,10 +1,11 @@
+using FluentResults;
 using MediatR;
 using System;
 using WebAppExam.Application.Shared;
 
 namespace WebAppExam.Application.User.Commands
 {
-    public class UpdateUserCommand(string username) : ICommand<Ulid>
+    public class UpdateUserCommand(string username) : ICommand<Result<Ulid>>
     {
         public string Username { get; } = username;
         public string Name { get; private set; }

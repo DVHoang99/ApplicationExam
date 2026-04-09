@@ -2,6 +2,7 @@ using FluentResults;
 using MediatR;
 using Microsoft.AspNetCore.DataProtection.KeyManagement.Internal;
 using WebAppExam.Application.Common.Caching;
+using WebAppExam.Application.Common.Errors;
 using WebAppExam.Application.Customers.Services;
 using WebAppExam.Domain.Repository;
 
@@ -28,8 +29,7 @@ public class DeleteCustomerCommandHandler : IRequestHandler<DeleteCustomerComman
 
         if (customer == null)
         {
-            var failure = new FluentValidation.Results.ValidationFailure("Customer", "Customer not found");
-            throw new FluentValidation.ValidationException(new[] { failure });
+            return Result.Fail(new NotFoundError("Customer", request.Id.ToString()));
         }
 
         customer.DeletedAt = DateTime.UtcNow;

@@ -52,9 +52,9 @@ public class ProductService : IProductService
 
         await _uow.SaveChangesAsync(cancellationToken);
 
-        var createInventoryAsync = await _inventoryService.CreateInventoryAsync(wareHouse.Id, product.Id.ToString(), stock, correlationId, cancellationToken);
+        var inventoryResult = await _inventoryService.CreateInventoryAsync(wareHouse.Id, product.Id.ToString(), stock, correlationId, cancellationToken);
 
-        if (createInventoryAsync != null)
+        if (inventoryResult.IsSuccess)
         {
             product.UpdateProductStatus(Domain.Enum.ProductStatus.Active);
             _productRepository.Update(product);
@@ -78,11 +78,10 @@ public class ProductService : IProductService
 
         var productIds = products.Select(x => x.Id.ToString()).ToList();
 
-        //var inventories = await _inventoryService.GetInventoryDTOsAsync(correlationIds, cancellationToken);
+        var inventoriesResult = await _inventoryService.GetInventoryDTOsByIdsAsync(productIds, cancellationToken);
 
-        var inventories = await _inventoryService.GetInventoryDTOsByIdsAsync(productIds, cancellationToken);
-
-        var inventoriesDictionary = inventories != null && inventories.Count > 0 ? inventories.ToDictionary(x => x.CorrelationId, x => x) : null;
+        var inventories = inventoriesResult.IsSuccess ? inventoriesResult.Value : new List<GetBatchInventoryDTO>();
+        var inventoriesDictionary = inventories.Count > 0 ? inventories.ToDictionary(x => x.CorrelationId, x => x) : null;
 
         return Result.Ok(products.Select(x =>
         {
@@ -112,11 +111,10 @@ public class ProductService : IProductService
         }
 
         //var inventories = await _inventoryService.GetInventoryDTOsAsync(new List<string> { res.CorrelationId }, cancellationToken);
+        var inventoriesResult = await _inventoryService.GetInventoryDTOsByIdsAsync(new List<string> { res.Id.ToString() }, cancellationToken);
 
-        var inventories = await _inventoryService.GetInventoryDTOsByIdsAsync(new List<string> { res.Id.ToString() }, cancellationToken);
-
-        var inventoriesDictionary = inventories != null && inventories.Count > 0 ? inventories.ToDictionary(x => x.CorrelationId, x => x) : null;
-
+        var inventories = inventoriesResult.IsSuccess ? inventoriesResult.Value : new List<GetBatchInventoryDTO>();
+        var inventoriesDictionary = inventories.Count > 0 ? inventories.ToDictionary(x => x.CorrelationId, x => x) : null;
         var stock = inventoriesDictionary != null && inventoriesDictionary.ContainsKey(res.CorrelationId) ? inventoriesDictionary[res.CorrelationId].StockQuantity : 0;
 
         WareHouseDTO? wareHouse = null;

@@ -1,10 +1,12 @@
+using FluentResults;
 using MediatR;
+using WebAppExam.Application.Common.Errors;
 using WebAppExam.Application.Common.Helpers;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.User.Commands;
 
-public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, Ulid>
+public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, Result<Ulid>>
 {
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -15,18 +17,17 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, Ulid>
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<Ulid> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
+    public async Task<Result<Ulid>> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
     {
         var user = await _userRepository.GetByUsernameAsync(request.Username, cancellationToken);
         if (user == null)
         {
-            var failure = new FluentValidation.Results.ValidationFailure("User", "User not found");
-            throw new FluentValidation.ValidationException(new[] { failure });
+            return Result.Fail(new NotFoundError("User", request.Username));
         }
 
         user.UpdateUser(PasswordHelper.HashPassword(request.Password), request.Name, request.Role);
         _userRepository.Update(user);
 
-        return user.Id;
+        return Result.Ok(user.Id);
     }
 }

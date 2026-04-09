@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using StackExchange.Redis;
 using Hangfire;
 using Hangfire.PostgreSql;
 using KafkaFlow;
@@ -124,7 +123,6 @@ public static class DependencyInjection
                     producer => producer
                         .DefaultTopic(Constants.KafkaTopic.OrderTopic)
                         .AddMiddlewares(middlewares => middlewares
-                            // Đã fix lỗi Resolver ở đây bằng cách truyền thẳng vào Generic
                             .AddSerializer<JsonCoreSerializer, MessageTypeResolver>()
                         )
                 )
