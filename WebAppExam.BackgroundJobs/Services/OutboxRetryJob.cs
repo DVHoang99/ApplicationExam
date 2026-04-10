@@ -13,7 +13,6 @@ public class OutboxRetryJob : IOutboxRetryJob
     private readonly IOutboxMessageRepository _outboxMessageRepository;
     private readonly IProducerAccessor _producerAccessor;
     private readonly ILogger<OutboxRetryJob> _logger;
-    private readonly IUnitOfWork _unitOfWork;
     private readonly IMediator _mediator;
 
     public OutboxRetryJob(IOutboxMessageRepository outboxMessageRepository, IProducerAccessor producerAccessor, ILogger<OutboxRetryJob> logger, IUnitOfWork unitOfWork, IMediator mediator)
@@ -21,7 +20,6 @@ public class OutboxRetryJob : IOutboxRetryJob
         _outboxMessageRepository = outboxMessageRepository;
         _producerAccessor = producerAccessor;
         _logger = logger;
-        _unitOfWork = unitOfWork;
         _mediator = mediator;
     }
 
