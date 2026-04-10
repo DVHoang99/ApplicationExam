@@ -4,9 +4,11 @@ namespace WebAppExam.Domain.Events;
 
 public class OrderItemEvent
 {
-    public string ProductId { get; private set; }
-    public int Quantity { get; private set; }
-    public string WareHouseId { get; private set; }
+    public string ProductId { get; init; }
+    public int Quantity { get; init; }
+    public string WareHouseId { get; init; }
+
+    public OrderItemEvent() { }
 
     private OrderItemEvent(string productId, int quantity, string wareHouseId)
     {

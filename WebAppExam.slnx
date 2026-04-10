@@ -3,4 +3,6 @@
   <Project Path="WebAppExam.Application/WebAppExam.Application.csproj" Id="a051a652-c897-4aa5-97fa-c9cd5db0f21a" />
   <Project Path="WebAppExam.Domain/WebAppExam.Domain.csproj" Id="651e60e9-2a2a-4e23-9b93-7ae95dba9e09" />
   <Project Path="WebAppExam.Infrastructure/WebAppExam.Infrastructure.csproj" Id="0798f87e-3559-4a26-9d76-33ade2cd4343" />
+  <Project Path="WebAppExam.GrpcContracts/WebAppExam.GrpcContracts.csproj" Id="12345678-abcd-ef01-2345-6789abcdefaa" />
+  <Project Path="WebAppExam.BackgroundJobs/WebAppExam.BackgroundJobs.csproj" Id="9f8b7c6d-5e4f-3a2b-1c0d-8e9f0a1b2c3d" />
 </Solution>

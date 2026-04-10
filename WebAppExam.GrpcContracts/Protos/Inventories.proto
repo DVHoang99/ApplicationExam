@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option csharp_namespace = "WebAppExam.Infrastructure.Protos";
+option csharp_namespace = "WebAppExam.GrpcContracts.Protos";
 service InventoryGrpc {
   rpc CreateInventory (CreateInventoryRequest) returns (CreateInventoryResponse);
   rpc GetInventory (GetInventoryRequest) returns (GetInventoryResponse);

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using WebAppExam.Application.Products.DTOs;
 using WebAppExam.Application.Products.Services;
-using WebAppExam.Infrastructure.Protos;
+using WebAppExam.GrpcContracts.Protos;
 
 namespace WebAppExam.Infrastructure.Services;
 

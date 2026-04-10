@@ -27,6 +27,7 @@
     <Folder Include="Auth\Services\" />
     <Folder Include="Behaviors\" />
     <Folder Include="Common\Errors\" />
+    <Folder Include="Common\Events\" />
     <Folder Include="Common\Helpers\" />
     <Folder Include="Customers\Commands\" />
     <Folder Include="Customers\DTOs\" />

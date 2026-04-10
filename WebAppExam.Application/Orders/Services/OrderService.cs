@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentResults;
 using WebAppExam.Application.Common;
 using WebAppExam.Application.Common.Caching;
@@ -5,6 +7,7 @@ using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Application.Orders.Events;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Common;
+using WebAppExam.Domain.Entity;
 using WebAppExam.Domain.Enum;
 using WebAppExam.Domain.Events;
 using WebAppExam.Domain.Repository;
@@ -19,6 +22,7 @@ public class OrderService : IOrderService
     private readonly IInventoryReservationService _inventoryReservationService;
     private readonly ICacheService _cacheService;
     private readonly IDailyRevenueRepository _dailyRepository;
+    private readonly IOutboxMessageRepository _outboxMessageRepository;
 
     public OrderService(
         ICustomerRepository customerRepository,
@@ -26,7 +30,8 @@ public class OrderService : IOrderService
         IProductRepository productRepository,
         IInventoryReservationService inventoryReservationService,
         ICacheService cacheService,
-        IDailyRevenueRepository dailyRepository
+        IDailyRevenueRepository dailyRepository,
+        IOutboxMessageRepository outboxMessageRepository
         )
     {
         _customerRepository = customerRepository;
@@ -35,6 +40,7 @@ public class OrderService : IOrderService
         _inventoryReservationService = inventoryReservationService;
         _cacheService = cacheService;
         _dailyRepository = dailyRepository;
+        _outboxMessageRepository = outboxMessageRepository;
     }
 
     public async Task<Result<Ulid>> CreateOrderAsync(Ulid customerId, string address, string phoneNumber, string customerName, List<OrderItemDTO> items, CancellationToken cancellationToken = default)
@@ -62,6 +68,7 @@ public class OrderService : IOrderService
             groupedItems.Select(x => x.WareHouseId).ToList(),
             cancellationToken);
 
+        // 1. Create Order
         var newOrder = Order.Init(customerId, address, customerName, phoneNumber);
 
         foreach (var item in groupedItems)
@@ -76,14 +83,26 @@ public class OrderService : IOrderService
 
         await _inventoryReservationService.ReserveStocksAsync(customerId, groupedItems);
 
+        // 2. Create outbox message and save everything in transaction
+        var orderItemEvent = groupedItems.Select(x => OrderItemEvent.Init(x.ProductId.ToString(), x.Quantity, x.WareHouseId.ToString())).ToList();
+
+        var outboxMessageId = Ulid.NewUlid();
+
+        var orderCreatedEvent = OrderCreatedEvent.Init(newOrder.Id.ToString(), newOrder.CustomerName, orderItemEvent, outboxMessageId.ToString());
+
+        var contentMessage = JsonSerializer.Serialize(orderCreatedEvent);
+
+        var outboxMessage = OutboxMessage.Init(
+            outboxMessageId,
+            nameof(OrderCreatedEvent),
+            contentMessage,
+            $"{Constants.CachePrefix.OrderDetailPrefix}:{newOrder.Id}"
+        );
+
         try
         {
-
             await _orderRepository.AddAsync(newOrder, cancellationToken);
-
-            var orderItemEvent = groupedItems.Select(x => OrderItemEvent.Init(x.ProductId.ToString(), x.Quantity, x.WareHouseId.ToString())).ToList();
-
-            var orderCreatedEvent = OrderCreatedEvent.Init(newOrder.Id.ToString(), newOrder.CustomerName, orderItemEvent);
+            await _outboxMessageRepository.AddAsync(outboxMessage, cancellationToken);
 
             newOrder.AddDomainEvent(orderCreatedEvent);
 

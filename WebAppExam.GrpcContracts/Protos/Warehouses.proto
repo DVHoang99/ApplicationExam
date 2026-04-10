@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option csharp_namespace = "WebAppExam.Infrastructure.Protos";
+option csharp_namespace = "WebAppExam.GrpcContracts.Protos";
 service WarehouseGrpc {
   rpc GetWarehouse (GetWarehouseRequest) returns (GetWarehouseResponse);
 }

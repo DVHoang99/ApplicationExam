@@ -21,7 +21,7 @@ using WebAppExam.Infrastructure.Services;
 using WebAppExam.API.Common.Kafka;
 using WebAppExam.Application.Products.Services;
 using WebAppExam.Application.Common;
-using WebAppExam.Infrastructure.Protos;
+using WebAppExam.GrpcContracts.Protos;
 using Hangfire.Redis.StackExchange;
 
 namespace WebAppExam.Infrastructure;
@@ -47,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IDailyRevenueRepository, DailyRevenueRepository>();
         services.AddSingleton<ILogRepository, MongoLogRepository>();
+        services.AddScoped<IOutboxMessageRepository, OutboxMessageRepository>();
 
         // 4. EXTERNAL / INTERNAL HTTP CLIENTS
         var inventoryServiceHost = configuration.GetSection("InternalService")["InventoryService"] ?? "http://localhost:5134/";
@@ -81,18 +82,20 @@ public static class DependencyInjection
         services.AddScoped<IInventoryReservationService, InventoryReservationService>();
 
         // 6. HANGFIRE CONFIGURATION
+        var hangfireDbConnection = configuration.GetSection("Redis")["HangfireDb"] ?? "localhost:6379,password=adminpassword,defaultDatabase=4";
+
         services.AddHangfire(config => config
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UseRedisStorage(configuration.GetConnectionString("RedisConnection"), new RedisStorageOptions
+            .UseRedisStorage(hangfireDbConnection, new RedisStorageOptions
             {
                 Prefix = "hangfire:ecommerce:",
                 Db = 4
             })
             .UseFilter(new AutomaticRetryAttribute { Attempts = 5 })
         );
-        
+
         services.AddHangfireServer();
         services.AddScoped<InventoryReconciliationJob, InventoryReconciliationJob>();
 

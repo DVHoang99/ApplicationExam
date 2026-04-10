@@ -7,7 +7,7 @@ using WebAppExam.Application.Common.Errors;
 using WebAppExam.Application.Products.DTOs;
 using WebAppExam.Application.Products.Services;
 using WebAppExam.Application.Services;
-using WebAppExam.Infrastructure.Protos;
+using WebAppExam.GrpcContracts.Protos;
 
 namespace WebAppExam.Infrastructure.Services;
 
@@ -210,7 +210,7 @@ public class InventoryInternalClient : IInventoryService
         }
     }
 
-    private GetBatchInventoryDTO MapProtoInventoryToDTO(Protos.InventoryDTO x)
+    private GetBatchInventoryDTO MapProtoInventoryToDTO(WebAppExam.GrpcContracts.Protos.InventoryDTO x)
     {
         var warehouseDto = x.WareHouse != null
             ? Application.Products.DTOs.WareHouseDTO.Init(
@@ -263,7 +263,7 @@ public class InventoryInternalClient : IInventoryService
     {
         try
         {
-            var protoInventory = new Protos.InventoryDTO
+            var protoInventory = new WebAppExam.GrpcContracts.Protos.InventoryDTO
             {
                 ProductId = productId,
                 StockQuantity = stock,
