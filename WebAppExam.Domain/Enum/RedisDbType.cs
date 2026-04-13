@@ -4,5 +4,6 @@ public enum RedisDbType
 {
     Cache,
     Session,
-    JobQueue
+    JobQueue,
+    Inbox
 }

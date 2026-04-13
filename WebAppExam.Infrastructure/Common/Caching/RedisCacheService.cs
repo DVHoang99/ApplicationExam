@@ -19,6 +19,7 @@ public class RedisCacheService : ICacheService
         string? cacheStr = configuration["Redis:CacheDb"];
         string? sessionStr = configuration["Redis:SessionDb"];
         string? jobQueueStr = configuration["Redis:JobQueueDb"];
+        string? inboxStr = configuration["Redis:InboxDb"];
 
         if (!string.IsNullOrEmpty(cacheStr))
             _connections[RedisDbType.Cache] = ConnectionMultiplexer.Connect(cacheStr);
@@ -28,6 +29,9 @@ public class RedisCacheService : ICacheService
 
         if (!string.IsNullOrEmpty(jobQueueStr))
             _connections[RedisDbType.JobQueue] = ConnectionMultiplexer.Connect(jobQueueStr);
+
+        if (!string.IsNullOrEmpty(inboxStr))
+            _connections[RedisDbType.Inbox] = ConnectionMultiplexer.Connect(inboxStr);
     }
 
     public IDatabase GetDatabase(RedisDbType dbType)

@@ -11,7 +11,9 @@ public class MessageTypeResolver : IMessageTypeResolver
     private static readonly Dictionary<string, Type> _types = new()
     {
         { "OrderCreatedEvent", typeof(OrderCreatedEvent) },
-        { "OrderUpdatedEvent", typeof(OrderUpdatedEvent) }
+        { "OrderUpdatedEvent", typeof(OrderUpdatedEvent) },
+        { "OrderCanceledEvent", typeof(OrderCanceledEvent) },
+        { "OrderDeletedEvent", typeof(OrderDeletedEvent) }
     };
     public ValueTask<Type?> OnConsumeAsync(IMessageContext context)
     {
@@ -49,6 +51,14 @@ public class MessageTypeResolver : IMessageTypeResolver
             else if (type == typeof(OrderUpdatedEvent))
             {
                 aliasName = nameof(OrderUpdatedEvent);
+            }
+            else if (type == typeof(OrderCanceledEvent))
+            {
+                aliasName = nameof(OrderCanceledEvent);
+            }
+            else if (type == typeof(OrderDeletedEvent))
+            {
+                aliasName = nameof(OrderDeletedEvent);
             }
 
             // 3. Đóng dấu tên ngắn vào Header

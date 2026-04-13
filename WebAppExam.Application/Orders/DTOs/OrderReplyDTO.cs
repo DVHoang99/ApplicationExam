@@ -10,6 +10,7 @@ public class OrderReplyDTO
     public OrderStatus Status { get; init; }
     public string Reason { get; init; }
     public string Action {get; init;}
+    public string IdenpotencyId { get; init; }
     public List<OrderDetailDTO> Data { get; init; }
 
 }

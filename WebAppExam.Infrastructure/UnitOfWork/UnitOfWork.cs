@@ -9,6 +9,7 @@ using System.Text.Json;
 using WebAppExam.Application.Services;
 using MediatR;
 using WebAppExam.Domain;
+using WebAppExam.Infrastructure.Exceptions;
 
 namespace WebAppExam.Infrastructure.UnitOfWork;
 
@@ -85,8 +86,14 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var result = await _context.SaveChangesAsync(cancellationToken);
-        return result;
+        try
+        {
+            return await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new DatabaseOperationException("Failed to save changes to the database.", ex);
+        }
     }
     private async Task PublishEvents(CancellationToken ct = default)
     {

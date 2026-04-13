@@ -38,4 +38,17 @@ public class OutboxService : IOutboxService
 
         return outboxMessage;
     }
+
+    public async Task HandleFailedMessageAsync(OutboxMessage outboxMessage, string errorDetails, CancellationToken cancellationToken)
+    {
+        try
+        {
+            outboxMessage.UpdateStatus(OutboxMessageStatus.Pending, errorDetails);
+            _outboxMessageRepository.Update(outboxMessage);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to update outbox message status. Message ID: {outboxMessage.Id}, Error: {errorDetails}, Exception: {ex}");
+        }
+    }
 }

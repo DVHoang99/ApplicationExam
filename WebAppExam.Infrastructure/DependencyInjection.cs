@@ -23,6 +23,7 @@ using WebAppExam.Application.Products.Services;
 using WebAppExam.Application.Common;
 using WebAppExam.GrpcContracts.Protos;
 using Hangfire.Redis.StackExchange;
+using KafkaFlow.Retry;
 
 namespace WebAppExam.Infrastructure;
 
@@ -48,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IDailyRevenueRepository, DailyRevenueRepository>();
         services.AddSingleton<ILogRepository, MongoLogRepository>();
         services.AddScoped<IOutboxMessageRepository, OutboxMessageRepository>();
+        services.AddScoped<IInboxMessageRepository, InboxMessageRepository>();
 
         // 4. EXTERNAL / INTERNAL HTTP CLIENTS
         var inventoryServiceHost = configuration.GetSection("InternalService")["InventoryService"] ?? "http://localhost:5134/";
@@ -164,16 +166,16 @@ public static class DependencyInjection
                         .AddTypedHandlers(h => h.AddHandler<RevenueUpdateHandler>())
                     )
                 )
-                .AddConsumer(consumer => consumer
-                    .Topic(Constants.KafkaTopic.SystemLogsTopic)
-                    .WithGroupId(Constants.KafkaGroup.APIInternalLoggerGroup)
-                    .WithWorkersCount(2)
-                    .WithBufferSize(100)
-                    .AddMiddlewares(middlewares => middlewares
-                        .AddDeserializer<JsonCoreDeserializer>()
-                        .AddTypedHandlers(h => h.AddHandler<LogMessageHandler>())
-                    )
-                )
+                // .AddConsumer(consumer => consumer
+                //     .Topic(Constants.KafkaTopic.SystemLogsTopic)
+                //     .WithGroupId(Constants.KafkaGroup.APIInternalLoggerGroup)
+                //     .WithWorkersCount(2)
+                //     .WithBufferSize(100)
+                //     .AddMiddlewares(middlewares => middlewares
+                //         .AddDeserializer<JsonCoreDeserializer>()
+                //         .AddTypedHandlers(h => h.AddHandler<LogMessageHandler>())
+                //     )
+                // )
                 .AddConsumer(consumer => consumer
                     .Topic(Constants.KafkaTopic.OrderReplyTopic)
                     .WithGroupId(Constants.KafkaGroup.OrderReplyTopicGroup)
@@ -181,6 +183,13 @@ public static class DependencyInjection
                     .WithBufferSize(100)
                     .AddMiddlewares(middlewares => middlewares
                         .AddSingleTypeDeserializer<OrderReplyDTO, JsonCoreDeserializer>()
+                        .RetrySimple(retry => retry
+                            .Handle<Exceptions.DatabaseOperationException>()
+                            .TryTimes(3)
+                            .WithTimeBetweenTriesPlan((retryCount) =>
+                            TimeSpan.FromMilliseconds(Math.Pow(2, retryCount) * 1000)
+                            )
+                        )
                         .AddTypedHandlers(h => h.AddHandler<OrderReplyHandler>())
                     )
                 )

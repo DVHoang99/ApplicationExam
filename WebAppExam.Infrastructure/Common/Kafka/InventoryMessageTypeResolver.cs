@@ -11,7 +11,9 @@ public class InventoryMessageTypeResolver : IMessageTypeResolver
     private static readonly Dictionary<string, Type> _types = new()
     {
         { "WebAppExam.Application.Orders.Events.OrderCreatedEvent", typeof(OrderCreatedEvent) },
-        { "WebAppExam.Application.Orders.Events.OrderUpdatedEvent", typeof(OrderUpdatedEvent) }
+        { "WebAppExam.Application.Orders.Events.OrderUpdatedEvent", typeof(OrderUpdatedEvent) },
+        { "WebAppExam.Domain.Events.OrderCanceledEvent", typeof(OrderCanceledEvent) },
+        { "WebAppExam.Domain.Events.OrderDeletedEvent", typeof(OrderDeletedEvent) },
     };
 
     public ValueTask<Type?> OnConsumeAsync(IMessageContext context)

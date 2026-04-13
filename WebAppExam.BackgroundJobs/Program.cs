@@ -29,7 +29,7 @@ builder.Services.AddHangfire(config =>
           .UseRedisStorage(redis, new RedisStorageOptions
           {
               Prefix = "hangfire.job:",
-              Db = 0
+              Db = 4
           });
 });
 

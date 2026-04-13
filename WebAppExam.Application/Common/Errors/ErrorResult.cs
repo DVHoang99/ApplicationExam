@@ -10,4 +10,6 @@ public class ErrorResult(List<string> errors)
     {
         return new ErrorResult(errors);
     }
+
+    
 }

@@ -3,6 +3,7 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using WebAppExam.Application.Auth.Services;
 using WebAppExam.Application.Behaviors;
+using WebAppExam.Application.Common;
 using WebAppExam.Application.Common.Events;
 using WebAppExam.Application.Customers.Services;
 using WebAppExam.Application.Orders.Events;
@@ -34,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IOutboxService, OutboxService>();
+        services.AddScoped<IInboxService, InboxService>();
 
         EventRegistry.Initialize(typeof(OrderCreatedEvent).Assembly);
 

@@ -4,9 +4,11 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using WebAppExam.Application.OutboxMessages;
 using WebAppExam.Domain.Common;
+using WebAppExam.Domain.Entity;
 using WebAppExam.Domain.Enum;
 using WebAppExam.Domain.Events;
 using WebAppExam.Domain.Repository;
+using WebAppExam.Infrastructure.Exceptions;
 
 namespace WebAppExam.Application.Orders.EventHandlers
 {
@@ -58,14 +60,27 @@ namespace WebAppExam.Application.Orders.EventHandlers
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
+            catch (Confluent.Kafka.ProduceException<string, string> kafkaEx)
+            {
+                _logger.LogError(kafkaEx, "Kafka broker rejected the message for Order: {OrderId}. Reason: {Reason}", message.OrderId, kafkaEx.Error.Reason);
+                await _outboxService.HandleFailedMessageAsync(outboxMessage, kafkaEx.Message, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            catch (TimeoutException timeoutEx)
+            {
+                _logger.LogError(timeoutEx, "Timeout while producing Kafka message for Order: {OrderId}.", message.OrderId);
+                await _outboxService.HandleFailedMessageAsync(outboxMessage, "Kafka Timeout", cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            catch (DatabaseOperationException dbEx)
+            {
+                _logger.LogCritical(dbEx, "CRITICAL: Kafka message sent for Order {OrderId}, but failed to update Outbox status to Sent.", message.OrderId);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to produce Kafka message for Order: {OrderId}. Outbox will remain Pending.", message.OrderId);
-
-                outboxMessage.UpdateStatus(OutboxMessageStatus.Pending, ex.Message);
-                _outboxMessageRepository.Update(outboxMessage);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
+
         }
     }
 }
