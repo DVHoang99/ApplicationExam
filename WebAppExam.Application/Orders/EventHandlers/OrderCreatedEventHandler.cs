@@ -30,7 +30,7 @@ public class OrderCreatedEventHandler : INotificationHandler<OrderCreatedEvent>
     public async Task Handle(OrderCreatedEvent message, CancellationToken cancellationToken)
     {
         var outboxMessage = await _outboxService.GetOutboxMessagePendingByMessageIdAsync(
-        Constants.CachePrefix.OrderDetailPrefix,
+        Constants.KafkaPrefix.OrderCreatedPrefix,
         message.OrderId,
         cancellationToken);
 

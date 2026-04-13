@@ -96,7 +96,7 @@ public class OrderService : IOrderService
             outboxMessageId,
             nameof(OrderCreatedEvent),
             contentMessage,
-            $"{Constants.CachePrefix.OrderDetailPrefix}:{newOrder.Id}"
+            $"{Constants.KafkaPrefix.OrderCreatedPrefix}:{orderCreatedEvent.OrderId}"
         );
 
         try
@@ -291,8 +291,21 @@ public class OrderService : IOrderService
 
             var itemUpdatedEvent = itemUpdated.Select(x => OrderItemEvent.Init(x.ProductId.ToString(), x.Quantity, x.WareHouseId.ToString())).ToList();
 
+            var outboxMessageId = Ulid.NewUlid();
+
             // Attach Events
-            var orderUpdateEvent = OrderUpdatedEvent.Init(order.Id.ToString(), order.CustomerName, itemUpdatedEvent);
+            var orderUpdateEvent = OrderUpdatedEvent.Init(order.Id.ToString(), order.CustomerName, itemUpdatedEvent, outboxMessageId.ToString());
+
+            var contentMessage = JsonSerializer.Serialize(orderUpdateEvent);
+
+            var outboxMessage = OutboxMessage.Init(
+                outboxMessageId,
+                nameof(OrderUpdatedEvent),
+                contentMessage,
+                $"{Constants.KafkaPrefix.OrderUpdatePrefix}:{orderUpdateEvent.OrderId}"
+            );
+
+            await _outboxMessageRepository.AddAsync(outboxMessage, cancellationToken);
 
             order.AddDomainEvent(orderUpdateEvent);
             order.AddDomainEvent(new OrderCreatedIntegrationEvent(order.Id, order.TotalAmount - oldTotalAmount, DateTime.UtcNow, 0));
@@ -334,7 +347,20 @@ public class OrderService : IOrderService
 
         var itemDeletedEvent = order.Details.Select(x => OrderItemEvent.Init(x.ProductId.ToString(), -x.Quantity, x.WareHouseId.ToString())).ToList();
 
-        var orderDeletedEvent = OrderDeletedEvent.Init(order.Id.ToString(), itemDeletedEvent);
+        var outboxMessageId = Ulid.NewUlid();
+
+        var orderDeletedEvent = OrderDeletedEvent.Init(order.Id.ToString(), itemDeletedEvent, outboxMessageId.ToString());
+
+        var contentMessage = JsonSerializer.Serialize(orderDeletedEvent);
+
+        var outboxMessage = OutboxMessage.Init(
+            outboxMessageId,
+            nameof(OrderDeletedEvent),
+            contentMessage,
+            $"{Constants.KafkaPrefix.OrderDeletedPrefix}:{orderDeletedEvent.OrderId}"
+        );
+
+        await _outboxMessageRepository.AddAsync(outboxMessage, cancellationToken);
 
         order.AddDomainEvent(orderDeletedEvent);
 
@@ -369,10 +395,24 @@ public class OrderService : IOrderService
         order.UpdateOrderStatus(OrderStatus.Updating, "Updating...");
         _orderRepository.Update(order);
 
+        var outboxMessageId = Ulid.NewUlid();
+
         var orderCanceledEvent = OrderCanceledEvent.Init
         (order.Id.ToString(),
         statusPrevious,
-        order.Details.Select(o => OrderItemEvent.Init(o.ProductId.ToString(), -o.Quantity, o.WareHouseId.ToString())).ToList());
+        order.Details.Select(o => OrderItemEvent.Init(o.ProductId.ToString(), -o.Quantity, o.WareHouseId.ToString())).ToList(),
+        outboxMessageId.ToString());
+
+        var contentMessage = JsonSerializer.Serialize(orderCanceledEvent);
+
+        var outboxMessage = OutboxMessage.Init(
+            outboxMessageId,
+            nameof(OrderCanceledEvent),
+            contentMessage,
+            $"{Constants.KafkaPrefix.OrderCanceledPrefix}:{orderCanceledEvent.OrderId}"
+        );
+
+        await _outboxMessageRepository.AddAsync(outboxMessage, cancellationToken);
 
         order.AddDomainEvent(orderCanceledEvent);
 

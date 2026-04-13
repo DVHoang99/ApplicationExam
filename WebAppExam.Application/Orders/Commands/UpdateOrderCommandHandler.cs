@@ -1,14 +1,6 @@
 using FluentResults;
 using MediatR;
-using WebAppExam.Application.Common;
-using WebAppExam.Application.Common.Caching;
-using WebAppExam.Application.Orders.DTOs;
-using WebAppExam.Application.Orders.Events;
 using WebAppExam.Application.Orders.Services;
-using WebAppExam.Domain;
-using WebAppExam.Domain.Enum;
-using WebAppExam.Domain.Events;
-using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Orders.Commands;
 

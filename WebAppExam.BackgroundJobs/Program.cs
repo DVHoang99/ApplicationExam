@@ -4,15 +4,22 @@ using StackExchange.Redis;
 using WebAppExam.Application;
 using WebAppExam.BackgroundJobs.Services;
 using WebAppExam.Infrastructure;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration));
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-var redisConnectionString = builder.Configuration.GetValue<string>("RedisConnection");
+// Add missing dependency for UnitOfWork since background jobs don't have HTTP contexts
+builder.Services.AddScoped<WebAppExam.Application.Services.ICurrentUserService, WebAppExam.BackgroundJobs.Services.SystemCurrentUserService>();
 
-var redis = ConnectionMultiplexer.Connect(redisConnectionString);
+ var hangfireDbConnection = builder.Configuration.GetSection("Redis")["HangfireDb"] ?? "localhost:6379,password=adminpassword,defaultDatabase=4";
+
+var redis = ConnectionMultiplexer.Connect(hangfireDbConnection);
 
 // 3. Cấu hình Hangfire sử dụng Redis Storage
 builder.Services.AddHangfire(config =>
@@ -40,7 +47,7 @@ app.UseHangfireDashboard("/hangfire");
 RecurringJob.AddOrUpdate<IOutboxRetryJob>(
     "Outbox-Resend-Job",
     job => job.ExecuteAsync(),
-    Cron.Hourly);
+    "* * * * *");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -50,28 +57,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

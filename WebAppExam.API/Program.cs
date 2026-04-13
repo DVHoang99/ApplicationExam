@@ -12,8 +12,12 @@ using WebAppExam.Infrastructure.Exceptions;
 using WebAppExam.Infrastructure.Jobs;
 using WebAppExam.Domain.Common;
 using WebAppExam.Application.Services;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration));
 
 // 1. Register Layer Dependencies
 builder.Services.AddApplication();

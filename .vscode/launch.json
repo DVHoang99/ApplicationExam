@@ -1,0 +1,52 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "C#: WebAppExam.API Debug",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/WebAppExam.API/bin/Debug/net10.0/WebAppExam.API.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/WebAppExam.API",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "ASPNETCORE_URLS": "http://localhost:5183;https://localhost:7247"
+            },
+            "sourceFileMap": {
+                "/Views": "${workspaceFolder}/Views"
+            },
+            "justMyCode": true,
+            "logging": {
+                "moduleLoad": false
+            }
+        },
+        {
+            "name": "C#: WebAppExam.BackgroundJobs Debug",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/WebAppExam.BackgroundJobs/bin/Debug/net10.0/WebAppExam.BackgroundJobs.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/WebAppExam.BackgroundJobs",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "ASPNETCORE_URLS": "http://localhost:5107;https://localhost:7008"
+            },
+            "justMyCode": true,
+            "logging": {
+                "moduleLoad": false
+            }
+        }
+    ]
+}

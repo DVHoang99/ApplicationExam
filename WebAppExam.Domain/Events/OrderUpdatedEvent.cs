@@ -6,19 +6,28 @@ namespace WebAppExam.Domain.Events;
 
 public class OrderUpdatedEvent : IDomainEvent
 {
-    public string OrderId { get; private set; }
-    public string CustomerName { get; private set; }
-    public List<OrderItemEvent> Items { get; private set; }
+    public string OrderId { get; init; }
+    public string CustomerName { get; init; }
+    public string IdempotencyId { get; init; } // Used for ensuring idempotency in event processing and idempotency = key for outbox message
+    public List<OrderItemEvent> Items { get; init; }
 
-    private OrderUpdatedEvent(string orderId, string customerName, List<OrderItemEvent> items)
+    public OrderUpdatedEvent() { }
+
+    private OrderUpdatedEvent(string orderId, string customerName, List<OrderItemEvent> items, string idempotencyId)
     {
         OrderId = orderId;
         CustomerName = customerName;
         Items = items;
+        IdempotencyId = idempotencyId;
     }
 
-    public static OrderUpdatedEvent Init(string orderId, string customerName, List<OrderItemEvent> items)
+    public static OrderUpdatedEvent Init(string orderId, string customerName, List<OrderItemEvent> items, string idempotencyId)
     {
-        return new OrderUpdatedEvent(orderId, customerName, items);
+        return new OrderUpdatedEvent(orderId, customerName, items, idempotencyId);
+    }
+
+    public static OrderUpdatedEvent Deserialize(string json)
+    {
+        return System.Text.Json.JsonSerializer.Deserialize<OrderUpdatedEvent>(json) ?? throw new InvalidOperationException("Failed to deserialize OrderUpdatedEvent");
     }
 }

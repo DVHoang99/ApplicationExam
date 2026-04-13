@@ -1,9 +1,7 @@
-using System;
+
 using System.Text.Json;
-using KafkaFlow.Producers;
 using MediatR;
 using WebAppExam.Application.Common.Events;
-using WebAppExam.Application.Orders.Events;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.BackgroundJobs.Services;
@@ -11,28 +9,26 @@ namespace WebAppExam.BackgroundJobs.Services;
 public class OutboxRetryJob : IOutboxRetryJob
 {
     private readonly IOutboxMessageRepository _outboxMessageRepository;
-    private readonly IProducerAccessor _producerAccessor;
-    private readonly ILogger<OutboxRetryJob> _logger;
     private readonly IMediator _mediator;
+    private readonly ILogger<OutboxRetryJob> _logger;
 
-    public OutboxRetryJob(IOutboxMessageRepository outboxMessageRepository, IProducerAccessor producerAccessor, ILogger<OutboxRetryJob> logger, IUnitOfWork unitOfWork, IMediator mediator)
+    public OutboxRetryJob(IOutboxMessageRepository outboxMessageRepository, IMediator mediator, ILogger<OutboxRetryJob> logger)
     {
         _outboxMessageRepository = outboxMessageRepository;
-        _producerAccessor = producerAccessor;
-        _logger = logger;
         _mediator = mediator;
+        _logger = logger;
     }
 
     public async Task ExecuteAsync()
     {
-        Console.WriteLine("--- HANGFIRE: Bắt đầu quét Outbox qua Repository ---");
-        var oneHourAgo = DateTime.UtcNow.AddHours(-1);
+        _logger.LogInformation("--- HANGFIRE: Started scanning Outbox via Repository ---");
+        var oneHourAgo = DateTime.UtcNow.AddMilliseconds(-1);
 
         var pendingMessages = await _outboxMessageRepository.GetPendingMessagesAsync(100, oneHourAgo);
 
         if (!pendingMessages.Any())
         {
-            Console.WriteLine("Outbox is clean. No pending messages found.");
+            _logger.LogInformation("Outbox is clean. No pending messages found.");
             return;
         }
         var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
@@ -41,26 +37,24 @@ public class OutboxRetryJob : IOutboxRetryJob
         {
             try
             {
-                Console.WriteLine("Đang xử lý lại Message ID: {Id}", msg.Id);
+                _logger.LogInformation("Retrying Message ID: {MessageId}", msg.Id);
 
                 Type eventType = EventRegistry.GetEventType(msg.Type);
-                object eventObj = JsonSerializer.Deserialize(msg.Content, eventType, jsonOptions);
+                object? eventObj = JsonSerializer.Deserialize(msg.Content, eventType, jsonOptions);
 
                 if (eventObj != null)
                 {
-                    // 3. MediatR quá đỉnh: Mày ném object vào Publish, 
-                    // nó sẽ tự ép về đúng kiểu và gọi INotificationHandler<T> của mày!
                     await _mediator.Publish(eventObj);
                 }
-                Console.WriteLine("-> THÀNH CÔNG: Đã gửi lại Message ID: {Id}", msg.Id);
+                _logger.LogInformation("-> SUCCESS: Resent Message ID: {MessageId}", msg.Id);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("-> THẤT BẠI: Lỗi khi gửi lại Message ID: {Id}", msg.Id);
+                _logger.LogError(ex, "-> FAILED: Error resending Message ID: {MessageId}", msg.Id);
                 // msg.Status = "Failed";
             }
         }
 
-        Console.WriteLine("--- HANGFIRE: Hoàn tất đợt quét Outbox ---");
+        _logger.LogInformation("--- HANGFIRE: Completed Outbox scan ---");
     }
 }

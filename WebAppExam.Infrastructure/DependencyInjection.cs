@@ -127,6 +127,9 @@ public static class DependencyInjection
                 .CreateTopicIfNotExists(Constants.KafkaTopic.OrderDeletedTopic, 3, 1)
                 .CreateTopicIfNotExists(Constants.KafkaTopic.OrderCanceledTopic, 3, 1)
                 .CreateTopicIfNotExists(Constants.KafkaTopic.OrderTopic, 3, 1)
+                .CreateTopicIfNotExists(Constants.KafkaTopic.OrderEventsTopic, 3, 1)
+                .CreateTopicIfNotExists(Constants.KafkaTopic.SystemLogsTopic, 3, 1)
+                .CreateTopicIfNotExists(Constants.KafkaTopic.OrderReplyTopic, 3, 1)
 
                 // --- PRODUCERS ---
                 .AddProducer(

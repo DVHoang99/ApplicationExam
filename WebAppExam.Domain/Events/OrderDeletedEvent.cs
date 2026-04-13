@@ -8,18 +8,27 @@ namespace WebAppExam.Domain.Events
 {
     public class OrderDeletedEvent : IDomainEvent
     {
-        public string OrderId { get; private set; }
-        public List<OrderItemEvent> Items { get; private set; }
+        public string OrderId { get; init; }
+        public string IdempotencyId { get; init; }
+        public List<OrderItemEvent> Items { get; init; }
 
-        private OrderDeletedEvent(string orderId, List<OrderItemEvent> items)
+        public OrderDeletedEvent() { }
+
+        private OrderDeletedEvent(string orderId, List<OrderItemEvent> items, string idempotencyId)
         {
             OrderId = orderId;
             Items = items;
+            IdempotencyId = idempotencyId;
         }
 
-        public static OrderDeletedEvent Init(string orderId, List<OrderItemEvent> items)
+        public static OrderDeletedEvent Init(string orderId, List<OrderItemEvent> items, string idempotencyId)
         {
-            return new OrderDeletedEvent(orderId, items);
+            return new OrderDeletedEvent(orderId, items, idempotencyId);
+        }
+
+        public static OrderDeletedEvent Deserialize(string json)
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<OrderDeletedEvent>(json) ?? throw new InvalidOperationException("Failed to deserialize OrderDeletedEvent");
         }
     }
 }

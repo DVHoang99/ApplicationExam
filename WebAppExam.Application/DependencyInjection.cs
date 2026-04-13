@@ -35,7 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IOutboxService, OutboxService>();
 
-        EventRegistry.Initialize(typeof(AssemblyReference).Assembly);
+        EventRegistry.Initialize(typeof(OrderCreatedEvent).Assembly);
 
         return services;
     }
