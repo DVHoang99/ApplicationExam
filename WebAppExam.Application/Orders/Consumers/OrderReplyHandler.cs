@@ -4,16 +4,19 @@ using Microsoft.Extensions.DependencyInjection;
 using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Repository;
+using Microsoft.Extensions.Logging;
 
 namespace WebAppExam.Application.Orders.Consumers;
 
 public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<OrderReplyHandler> _logger;
 
-    public OrderReplyHandler(IServiceProvider serviceProvider)
+    public OrderReplyHandler(IServiceProvider serviceProvider, ILogger<OrderReplyHandler> logger)
     {
         _serviceProvider = serviceProvider;
+        _logger = logger;
     }
 
     public async Task Handle(IMessageContext context, OrderReplyDTO messageDto)
@@ -48,8 +51,8 @@ public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
         var order = await repository.GetOrderByIdAndStatusAsync(messageDto.OrderId, Domain.Enum.OrderStatus.Draft, CancellationToken.None);
         if (order == null)
         {
-            var failure = new FluentValidation.Results.ValidationFailure("Order", "Order not found");
-            throw new FluentValidation.ValidationException(new[] { failure });
+            _logger.LogWarning("Order {OrderId} not found or not in expected status (Draft). Action: {Action}", messageDto.OrderId, messageDto.Action);
+            return;
         }
         order.UpdateOrderStatus(messageDto.Status, messageDto.Reason);
         repository.Update(order);
@@ -61,8 +64,8 @@ public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
         var order = await repository.GetOrderByIdAndStatusAsync(messageDto.OrderId, Domain.Enum.OrderStatus.Updating, CancellationToken.None);
         if (order == null)
         {
-            var failure = new FluentValidation.Results.ValidationFailure("Order", "Order not found");
-            throw new FluentValidation.ValidationException(new[] { failure });
+            _logger.LogWarning("Order {OrderId} not found or not in expected status (Updating). Action: {Action}", messageDto.OrderId, messageDto.Action);
+            return;
         }
 
         if (messageDto.Status == Domain.Enum.OrderStatus.Pending)
@@ -72,7 +75,7 @@ public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
         else
         {
             order.UpdateOrderStatus(Domain.Enum.OrderStatus.Pending, messageDto.Reason);
-            await RollbackOrder(messageDto, order);
+            RollbackOrder(messageDto, order);
         }
 
         repository.Update(order);
@@ -88,7 +91,7 @@ public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
 
         await uow.CommitAsync();
     }
-    private async Task RollbackOrder(OrderReplyDTO messageDto, Order order)
+    private void RollbackOrder(OrderReplyDTO messageDto, Order order)
     {
         foreach (var item in messageDto.Data)
         {
@@ -100,8 +103,8 @@ public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
         var order = await repository.GetOrderByIdAndStatusAsync(messageDto.OrderId, Domain.Enum.OrderStatus.Updating, CancellationToken.None);
         if (order == null)
         {
-            var failure = new FluentValidation.Results.ValidationFailure("Order", "Order not found");
-            throw new FluentValidation.ValidationException(new[] { failure });
+            _logger.LogWarning("Order {OrderId} not found or not in expected status (Updating). Action: {Action}", messageDto.OrderId, messageDto.Action);
+            return;
         }
 
         order.UpdateOrderStatus(messageDto.Status, messageDto.Reason);

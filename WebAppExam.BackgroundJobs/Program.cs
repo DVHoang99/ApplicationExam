@@ -21,7 +21,6 @@ builder.Services.AddScoped<WebAppExam.Application.Services.ICurrentUserService, 
 
 var redis = ConnectionMultiplexer.Connect(hangfireDbConnection);
 
-// 3. Cấu hình Hangfire sử dụng Redis Storage
 builder.Services.AddHangfire(config =>
 {
     config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
