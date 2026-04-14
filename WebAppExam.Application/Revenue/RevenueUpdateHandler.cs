@@ -1,5 +1,6 @@
 using KafkaFlow;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using WebAppExam.Application.Common;
 using WebAppExam.Application.Orders.Commands;
 using WebAppExam.Application.Orders.Events;
@@ -10,10 +11,12 @@ namespace WebAppExam.Application.Revenue;
 public class RevenueUpdateHandler : IMessageHandler<OrderCreatedIntegrationEvent>
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<RevenueUpdateHandler> _logger;
 
-    public RevenueUpdateHandler(IServiceProvider serviceProvider)
+    public RevenueUpdateHandler(IServiceProvider serviceProvider, ILogger<RevenueUpdateHandler> logger)
     {
         _serviceProvider = serviceProvider;
+        _logger = logger;
     }
 
     public async Task Handle(IMessageContext context, OrderCreatedIntegrationEvent message)
@@ -28,10 +31,18 @@ public class RevenueUpdateHandler : IMessageHandler<OrderCreatedIntegrationEvent
         // Assuming OrderId or a combination of fields serves as a unique message identifier
         var messageId = $"revenue-update:{message.OrderId}";
         
-        if (await inboxService.HasBeenProcessedAsync(messageId))
+        try
         {
-            Console.WriteLine($"[Kafka] Message {messageId} already processed. Skipping.");
-            return;
+            if (await inboxService.HasBeenProcessedAsync(messageId))
+            {
+                _logger.LogInformation("[Kafka] Message {MessageId} already processed. Skipping.", messageId);
+                return;
+            }
+        }
+        catch (StackExchange.Redis.RedisException redisEx)
+        {
+            _logger.LogError(redisEx, "[Kafka] Redis connection failed while checking idempotency for {MessageId}", messageId);
+            throw new WebAppExam.Infrastructure.Exceptions.TransientOperationException("Redis cache operation failed", redisEx);
         }
 
         await uow.BeginTransactionAsync();
@@ -44,12 +55,26 @@ public class RevenueUpdateHandler : IMessageHandler<OrderCreatedIntegrationEvent
             await inboxService.MarkAsProcessedAsync(messageId);
             
             await uow.CommitAsync();
-            Console.WriteLine($"[Kafka] processing calculate monthly revenue for order {message.OrderId}");
+            _logger.LogInformation("[Kafka] processing calculate monthly revenue for order {OrderId}", message.OrderId);
+        }
+        catch (StackExchange.Redis.RedisException redisEx)
+        {
+            await uow.RollbackAsync();
+            _logger.LogError(redisEx, "[Kafka] Redis Error processing message {MessageId}", messageId);
+            // Wrap in TransientOperationException so KafkaFlow retry policy triggers
+            throw new WebAppExam.Infrastructure.Exceptions.TransientOperationException("Redis operation failed", redisEx);
+        }
+        catch (Exception dbEx) when (dbEx.GetType().Name == "DbUpdateException" || dbEx.GetType().Name == "PostgresException")
+        {
+            await uow.RollbackAsync();
+            _logger.LogError(dbEx, "[Kafka] Database Error processing message {MessageId}", messageId);
+            // Wrap in TransientOperationException so KafkaFlow retry policy triggers
+            throw new WebAppExam.Infrastructure.Exceptions.TransientOperationException("Database commit failed", dbEx);
         }
         catch (Exception ex)
         {
             await uow.RollbackAsync();
-            Console.WriteLine($"[Kafka] Error processing message {messageId}: {ex.Message}");
+            _logger.LogError(ex, "[Kafka] Unknown Error processing message {MessageId}", messageId);
             throw;
         }
     }

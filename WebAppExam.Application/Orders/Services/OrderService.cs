@@ -157,10 +157,10 @@ public class OrderService : IOrderService
             .ToList();
     }
 
-    public async Task<Result<OrderDTO>> GetAllOrdersAsync(Ulid id, CancellationToken cancellationToken = default)
+    public async Task<Result<OrderDTO>> GetOrderDetailAsync(Ulid id, CancellationToken cancellationToken = default)
     {
         var key = $"{Constants.CachePrefix.OrderDetailPrefix}:{id}";
-        var orderDTO = await _cacheService.GetAsync(key, async () =>
+        var orderDTO = await _cacheService.GetAsync<OrderDTO>(key, async () =>
         {
             var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
 
@@ -180,7 +180,7 @@ public class OrderService : IOrderService
                 order.CreatedAt,
                 order.Details.ToList());
             return res;
-        }, TimeSpan.FromDays(1), cancellationToken);
+        }, Constants.CacheDuration.OrderDetail, cancellationToken);
 
         if (orderDTO == null)
         {
@@ -317,7 +317,7 @@ public class OrderService : IOrderService
 
             var cacheKey = $"{Constants.CachePrefix.OrderDetailPrefix}:{id}";
             // Clear Cache
-            await _cacheService.RemoveByPrefixAsync($"{Constants.CachePrefix.OrderDetailPrefix}:{cacheKey}");
+            await _cacheService.RemoveByPrefixAsync(cacheKey);
 
             return Result.Ok(order.Id);
         }
@@ -376,7 +376,7 @@ public class OrderService : IOrderService
         itemsToRelease.ForEach(x => order.RemoveItem(x.ProductId, x.WareHouseId));
 
         var cacheKey = $"{Constants.CachePrefix.OrderDetailPrefix}:{id}";
-        await _cacheService.RemoveByPrefixAsync($"{Constants.CachePrefix.OrderDetailPrefix}:{cacheKey}");
+        await _cacheService.RemoveByPrefixAsync(cacheKey);
 
         return Result.Ok(order.Id);
     }

@@ -3,6 +3,7 @@ using KafkaFlow;
 using KafkaFlow.Middlewares.Serializer.Resolvers;
 using WebAppExam.Application.Orders.Events;
 using WebAppExam.Domain.Events;
+using Microsoft.Extensions.Logging;
 
 namespace WebAppExam.API.Common.Kafka;
 
@@ -15,19 +16,25 @@ public class MessageTypeResolver : IMessageTypeResolver
         { "OrderCanceledEvent", typeof(OrderCanceledEvent) },
         { "OrderDeletedEvent", typeof(OrderDeletedEvent) }
     };
+    private readonly ILogger<MessageTypeResolver> _logger;
+
+    public MessageTypeResolver(ILogger<MessageTypeResolver> logger)
+    {
+        _logger = logger;
+    }
     public ValueTask<Type?> OnConsumeAsync(IMessageContext context)
     {
         var typeName = context.Headers.GetString("Message-Type");
 
-        Console.WriteLine($"[Kafka-Resolver] Đang phiên dịch Type: '{typeName}'");
+        _logger.LogDebug("[Kafka-Resolver] Đang phiên dịch Type: '{TypeName}'", typeName);
 
         if (typeName != null && _types.TryGetValue(typeName, out var type))
         {
-            Console.WriteLine($"[Kafka-Resolver] Đã tìm thấy map cho: {type.Name}");
+            _logger.LogDebug("[Kafka-Resolver] Đã tìm thấy map cho: {TypeName}", type.Name);
             return ValueTask.FromResult<Type?>(type);
         }
 
-        Console.WriteLine($"[Kafka-Resolver] KHÔNG TÌM THẤY MAP CHO: '{typeName}'");
+        _logger.LogWarning("[Kafka-Resolver] KHÔNG TÌM THẤY MAP CHO: '{TypeName}'", typeName);
         return ValueTask.FromResult<Type?>(null);
     }
 

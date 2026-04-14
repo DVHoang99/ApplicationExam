@@ -19,6 +19,6 @@ public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, Resul
 
     public async Task<Result<OrderDTO>> Handle(GetOrderByIdQuery request, CancellationToken cancellationToken)
     {
-        return await _orderService.GetAllOrdersAsync(request.Id, cancellationToken);
+        return await _orderService.GetOrderDetailAsync(request.Id, cancellationToken);
     }
 }

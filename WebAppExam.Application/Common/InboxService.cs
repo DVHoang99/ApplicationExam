@@ -1,47 +1,47 @@
 using System;
-using WebAppExam.Domain.Entity;
-using WebAppExam.Domain.Repository;
+using System.Threading;
+using System.Threading.Tasks;
+using WebAppExam.Application.Common.Caching;
+using WebAppExam.Application.Common.Enums;
+using StackExchange.Redis;
 
 namespace WebAppExam.Application.Common;
 
 public class InboxService : IInboxService
 {
-    private readonly IInboxMessageRepository _inboxRepository;
+    private readonly ICacheService _cacheService;
 
-    public InboxService(IInboxMessageRepository inboxRepository)
+    public InboxService(ICacheService cacheService)
     {
-        _inboxRepository = inboxRepository;
+        _cacheService = cacheService;
     }
 
     public async Task<bool> HasBeenProcessedAsync(string messageId, CancellationToken cancellationToken = default)
     {
-        return await _inboxRepository.HasBeenProcessedAsync(messageId, cancellationToken);
+        var db = _cacheService.GetDatabase(RedisDbType.Inbox);
+        var key = $"inbox:{messageId}";
+        var value = await db.StringGetAsync(key);
+        return value.HasValue && value == "Processed";
     }
 
-    public async Task<InboxMessage> CreateInboxMessageAsync(string messageId, string type, string? content = null, CancellationToken cancellationToken = default)
+    public async Task CreateInboxMessageAsync(string messageId, string type, string? content = null, CancellationToken cancellationToken = default)
     {
-        var inboxMessage = InboxMessage.Create(messageId, type, "Pending", content);
-        await _inboxRepository.AddAsync(inboxMessage, cancellationToken);
-        return inboxMessage;
+        var db = _cacheService.GetDatabase(RedisDbType.Inbox);
+        var key = $"inbox:{messageId}";
+        await db.StringSetAsync(key, "Pending", TimeSpan.FromDays(1));
     }
 
     public async Task MarkAsProcessedAsync(string messageId, CancellationToken cancellationToken = default)
     {
-        var inboxMessage = await _inboxRepository.FirstOrDefaultAsync(m => m.MessageId == messageId, cancellationToken);
-        if (inboxMessage != null)
-        {
-            inboxMessage.MarkAsProcessed();
-            _inboxRepository.Update(inboxMessage);
-        }
+        var db = _cacheService.GetDatabase(RedisDbType.Inbox);
+        var key = $"inbox:{messageId}";
+        await db.StringSetAsync(key, "Processed", TimeSpan.FromDays(1));
     }
 
     public async Task UpdateInboxMessageStatusAsync(string messageId, string status, CancellationToken cancellationToken = default)
     {
-        var inboxMessage = await _inboxRepository.FirstOrDefaultAsync(m => m.MessageId == messageId, cancellationToken);
-        if (inboxMessage != null)
-        {
-            inboxMessage.MarkAsProcessed();
-            _inboxRepository.Update(inboxMessage);
-        }
+        var db = _cacheService.GetDatabase(RedisDbType.Inbox);
+        var key = $"inbox:{messageId}";
+        await db.StringSetAsync(key, status, TimeSpan.FromDays(1));
     }
 }

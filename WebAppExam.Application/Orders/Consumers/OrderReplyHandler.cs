@@ -11,6 +11,7 @@ using WebAppExam.Application.Common.Caching;
 using StackExchange.Redis;
 using WebAppExam.Application.Common.Enums;
 using System.Text.Json;
+using WebAppExam.Infrastructure.Exceptions;
 
 namespace WebAppExam.Application.Orders.Consumers;
 
@@ -28,40 +29,36 @@ public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
     public async Task Handle(IMessageContext context, OrderReplyDTO messageDto)
     {
         await using var scope = _serviceProvider.CreateAsyncScope();
-        var inboxService = scope.ServiceProvider.GetRequiredService<IInboxService>();
         var dailyRepository = scope.ServiceProvider.GetRequiredService<IDailyRevenueRepository>();
         var repository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
-        var inboxMessageRepository = scope.ServiceProvider.GetRequiredService<IInboxMessageRepository>();
         var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
+        var inboxService = scope.ServiceProvider.GetRequiredService<IInboxService>();
 
-        IDatabase db = cacheService.GetDatabase(RedisDbType.JobQueue);
+        var messageId = $"order_reply:{messageDto.IdenpotencyId}";
 
-        var messageId = messageDto.IdenpotencyId;
-
-
-        var key = $"order_reply:{messageId}";
         try
         {
-            var cachedValue = await db.StringGetAsync(key);
-            if (cachedValue.HasValue)
+            if (await inboxService.HasBeenProcessedAsync(messageId))
             {
                 _logger.LogInformation("Message {MessageId} already processed. Skipping.", messageId);
                 return;
             }
         }
-        catch (RedisConnectionException redisEx)
+        catch (StackExchange.Redis.RedisException redisEx)
         {
             _logger.LogError(redisEx, "Redis connection failed while checking idempotency for {MessageId}", messageId);
+            throw new RedisException("Redis cache operation failed", redisEx);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed while checking idempotency for {MessageId}", messageId);
             throw;
         }
 
         await uow.BeginTransactionAsync();
         try
         {
-            string jsonValue = JsonSerializer.Serialize(messageDto);
-
-            await db.StringSetAsync(key, jsonValue, TimeSpan.FromHours(24));
+            await inboxService.CreateInboxMessageAsync(messageId, "OrderReply");
 
             switch (messageDto.Action?.ToLower())
             {
@@ -78,16 +75,27 @@ public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
                     break;
 
                 default:
-                    Console.WriteLine($"Unknown action received: {messageDto.Action}");
+                    _logger.LogWarning("Unknown action received: {Action}", messageDto.Action);
                     break;
             }
 
+            await inboxService.MarkAsProcessedAsync(messageId);
             await uow.CommitAsync();
+        }
+        catch (StackExchange.Redis.RedisException redisEx)
+        {
+            await uow.RollbackAsync();
+            _logger.LogError(redisEx, "Redis Error processing order reply message {MessageId}", messageId);
+            throw new RedisException("Redis cache operation failed", redisEx);
+        }
+        catch (Exception dbEx) when (dbEx.GetType().Name == "DbUpdateException" || dbEx.GetType().Name == "PostgresException")
+        {
+            _logger.LogError(dbEx, "Database Error processing order reply message {MessageId}", messageId);
+             throw new TransientOperationException("Database Error processing order reply message");
         }
         catch (Exception ex)
         {
-            await uow.RollbackAsync();
-            _logger.LogError(ex, "Error processing order reply message {MessageId}", messageId);
+            _logger.LogError(ex, "Unknown Error processing order reply message {MessageId}", messageId);
             throw;
         }
     }

@@ -29,7 +29,15 @@ public class HangfireJobService : IHangfireJobService, IJobService
     /// <summary>
     /// Enqueue an async background job to run immediately
     /// </summary>
-    public string Enqueue(Expression<Func<Task>> methodCall)
+    public void Enqueue(Expression<Func<Task>> methodCall)
+    {
+        BackgroundJob.Enqueue(methodCall);
+    }
+
+    /// <summary>
+    /// Enqueue an async background job to run immediately (IHangfireJobService)
+    /// </summary>
+    string IHangfireJobService.Enqueue(Expression<Func<Task>> methodCall)
     {
         return BackgroundJob.Enqueue(methodCall);
     }

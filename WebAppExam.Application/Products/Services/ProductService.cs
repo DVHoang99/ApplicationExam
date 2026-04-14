@@ -103,41 +103,48 @@ public class ProductService : IProductService
 
     public async Task<Result<ProductDTO>> GetProductByIdAsync(Ulid id, CancellationToken cancellationToken = default)
     {
-        var res = await _productRepository.GetByIdAsync(id, cancellationToken);
+        string cacheKey = $"{Constants.CachePrefix.ProductDetailPrefix}:{id}";
+        
+        var productDto = await _cacheService.GetAsync<ProductDTO>(
+            cacheKey,
+            async () => 
+            {
+                var res = await _productRepository.GetByIdAsync(id, cancellationToken);
+                if (res == null) return null!;
 
-        if (res == null)
+                var inventoriesResult = await _inventoryService.GetInventoryDTOsByIdsAsync(new List<string> { res.Id.ToString() }, cancellationToken);
+                var inventories = inventoriesResult.IsSuccess ? inventoriesResult.Value : new List<GetBatchInventoryDTO>();
+                var inventoriesDictionary = inventories.Count > 0 ? inventories.ToDictionary(x => x.CorrelationId, x => x) : null;
+                var stock = inventoriesDictionary != null && inventoriesDictionary.ContainsKey(res.CorrelationId) ? inventoriesDictionary[res.CorrelationId].StockQuantity : 0;
+
+                WareHouseDTO? wareHouse = null;
+                if (inventoriesDictionary?.TryGetValue(res.CorrelationId, out var inv) == true)
+                {
+                    var wh = inv.WareHouse;
+                    if (wh != null)
+                    {
+                        wareHouse = WareHouseDTO.Init(
+                            inv.WareHouseId ?? "",
+                            wh.Address ?? "",
+                            wh.OwnerName ?? "",
+                            wh.OwnerEmail ?? "",
+                            wh.OwnerPhone ?? ""
+                        );
+                    }
+                }
+
+                return ProductDTO.Init(id, res.Name, res.Description, res.Price, res.WareHouseId, stock, wareHouse);
+            },
+            Constants.CacheDuration.ProductDetail,
+            cancellationToken
+        );
+
+        if (productDto == null)
         {
             return Result.Fail("Product not found.");
         }
 
-        //var inventories = await _inventoryService.GetInventoryDTOsAsync(new List<string> { res.CorrelationId }, cancellationToken);
-        var inventoriesResult = await _inventoryService.GetInventoryDTOsByIdsAsync(new List<string> { res.Id.ToString() }, cancellationToken);
-
-        var inventories = inventoriesResult.IsSuccess ? inventoriesResult.Value : new List<GetBatchInventoryDTO>();
-        var inventoriesDictionary = inventories.Count > 0 ? inventories.ToDictionary(x => x.CorrelationId, x => x) : null;
-        var stock = inventoriesDictionary != null && inventoriesDictionary.ContainsKey(res.CorrelationId) ? inventoriesDictionary[res.CorrelationId].StockQuantity : 0;
-
-        WareHouseDTO? wareHouse = null;
-
-        if (inventoriesDictionary?.TryGetValue(res.CorrelationId, out var inv) == true)
-        {
-            var wh = inv.WareHouse;
-
-            if (wh != null)
-            {
-                wareHouse = WareHouseDTO.Init(
-                    inv.WareHouseId ?? "",
-                    wh.Address ?? "",
-                    wh.OwnerName ?? "",
-                    wh.OwnerEmail ?? "",
-                    wh.OwnerPhone ?? ""
-                );
-            }
-        }
-
-        return Result.Ok(
-            ProductDTO.Init(id, res.Name, res.Description, res.Price, res.WareHouseId, stock, wareHouse)
-        );
+        return Result.Ok(productDto);
     }
 
     public async Task<Result<Ulid>> UpdateProductAsync(Ulid id, string name, string? description, int price, string wareHouseId, int stock, CancellationToken cancellationToken = default)
@@ -159,7 +166,7 @@ public class ProductService : IProductService
 
         var updateEventId = Guid.NewGuid();
 
-        _jobService.Enqueue(() => _inventoryService.CallInventoryToUpdateGrpc(product.Id.ToString(), product.WareHouseId, stock, updateEventId));
+        _jobService.Enqueue(() => _inventoryService.CallInventoryToUpdateGrpc(product.Id.ToString(), product.WareHouseId, stock, updateEventId, CancellationToken.None));
 
         return product.Id;
     }
@@ -180,7 +187,7 @@ public class ProductService : IProductService
         var key = Constants.CachePrefix.InventoriesStock(wareHouseId, id.ToString());
 
         await _cacheService.RemoveByPrefixAsync(key);
-        _jobService.Enqueue(() => _inventoryService.DeleteInventoryGrpcAsync(product.Id.ToString(), product.WareHouseId, cancellationToken));
+        _jobService.Enqueue(() => _inventoryService.DeleteInventoryGrpcAsync(product.Id.ToString(), product.WareHouseId, CancellationToken.None));
         return product.Id;
     }
 }

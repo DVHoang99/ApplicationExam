@@ -92,7 +92,7 @@ public class UnitOfWork : IUnitOfWork, IAsyncDisposable
         }
         catch (DbUpdateException ex)
         {
-            throw new DatabaseOperationException("Failed to save changes to the database.", ex);
+            throw new TransientOperationException("Failed to save changes to the database.", ex);
         }
     }
     private async Task PublishEvents(CancellationToken ct = default)

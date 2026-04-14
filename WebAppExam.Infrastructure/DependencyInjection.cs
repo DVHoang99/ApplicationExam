@@ -3,11 +3,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Http;
 using Hangfire;
-using Hangfire.PostgreSql;
 using KafkaFlow;
 using KafkaFlow.Serializer;
 using WebAppExam.Application.Common.Caching;
-using WebAppExam.Application.Logger.Handlers;
 using WebAppExam.Application.Orders.Consumers;
 using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Application.Revenue;
@@ -24,6 +22,13 @@ using WebAppExam.Application.Common;
 using WebAppExam.GrpcContracts.Protos;
 using Hangfire.Redis.StackExchange;
 using KafkaFlow.Retry;
+using WebAppExam.Infrastructure.Exceptions;
+using Confluent.Kafka;
+using StackExchange.Redis;
+using ZiggyCreatures.Caching.Fusion;
+using ZiggyCreatures.Caching.Fusion.Backplane.StackExchangeRedis;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
+using ZiggyCreatures.Caching.Fusion.Serialization.NewtonsoftJson;
 
 namespace WebAppExam.Infrastructure;
 
@@ -36,6 +41,48 @@ public static class DependencyInjection
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
         // 2. REDIS & CACHING
+        services.AddSingleton<IConnectionMultiplexer>(sp => 
+            ConnectionMultiplexer.Connect(configuration[Constants.ConfigKeys.RedisCacheDb] ?? Constants.ConfigDefaults.LocalRedis));
+
+        services.AddFusionCache()
+        .WithOptions(options => {
+            // We can't explicitly set the memory cache here in the builder easily in 2.6.0
+            // but we can ensure the registration order is correct.
+        })
+        // 1. DEFAULT ENTRY OPTIONS (MULTI-TIER TTL CONFIGURATION)
+        .WithDefaultEntryOptions(new FusionCacheEntryOptions
+        {
+            // The Time-To-Live (TTL) for the local Memory Cache (RAM / L1).
+            // Keeps the data ultra-fast and accessible in-memory for 5 minutes.
+            Duration = Constants.CacheDuration.DefaultL1,
+            
+            // The Time-To-Live (TTL) specifically for the Distributed Cache (Redis / L2).
+            // By setting this, Redis will hold the data for 2 hours, even if the RAM cache expires.
+            // If left unset, it automatically falls back to the L1 Duration.
+            DistributedCacheDuration = Constants.CacheDuration.DefaultL2,
+            
+            // Cache Stampede (Thundering Herd) prevention.
+            // Adds a random jitter (0 to 30 seconds) to the Duration to prevent multiple 
+            // cache keys from expiring at the exact same time and overloading the Database.
+            JitterMaxDuration = Constants.CacheDuration.Jitter
+        })
+        // 2. SERIALIZER CONFIGURATION
+        // Uses Newtonsoft.Json to serialize C# objects into JSON strings before storing them in Redis.
+        .WithSerializer(new FusionCacheNewtonsoftJsonSerializer())
+        // 3. BACKPLANE CONFIGURATION (L1 MEMORY CACHE SYNCHRONIZATION)
+        // Utilizes Redis Pub/Sub. When a server/instance updates or deletes a key, 
+        // it broadcasts a message so other instances automatically evict the stale data from their local RAM.
+        .WithBackplane(new RedisBackplane(new RedisBackplaneOptions
+        {
+            Configuration = configuration[Constants.ConfigKeys.RedisCacheDb] ?? Constants.ConfigDefaults.LocalRedis
+        }))
+        // 4. DISTRIBUTED CACHE CONFIGURATION (L2 CACHE)
+        // Integrates Redis as the Layer 2 cache. The retrieval flow becomes: 
+        // L1 (Memory) -> L2 (Redis) -> Database.
+        .WithDistributedCache(
+            new RedisCache(new RedisCacheOptions() { Configuration = configuration[Constants.ConfigKeys.RedisCacheDb] ?? Constants.ConfigDefaults.LocalRedis })
+        );
+
         services.AddSingleton<ICacheService, RedisCacheService>();
         services.AddScoped<ICacheLockService, CacheLockService>();
 
@@ -49,10 +96,9 @@ public static class DependencyInjection
         services.AddScoped<IDailyRevenueRepository, DailyRevenueRepository>();
         services.AddSingleton<ILogRepository, MongoLogRepository>();
         services.AddScoped<IOutboxMessageRepository, OutboxMessageRepository>();
-        services.AddScoped<IInboxMessageRepository, InboxMessageRepository>();
-
         // 4. EXTERNAL / INTERNAL HTTP CLIENTS
-        var inventoryServiceHost = configuration.GetSection("InternalService")["InventoryService"] ?? "http://localhost:5134/";
+        var inventoryServiceHost = configuration[Constants.ConfigKeys.InternalInventoryService] ?? Constants.ConfigDefaults.LocalInventoryService;
+        var inventoryServiceUri = new Uri(inventoryServiceHost);
 
         // Register HTTP context accessor for JWT token forwarding
         services.AddHttpContextAccessor();
@@ -64,7 +110,7 @@ public static class DependencyInjection
         services.AddHttpClient<IWareHouseService, WarehouseInternalClient>(client =>
         {
             client.BaseAddress = new Uri(inventoryServiceHost);
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            client.DefaultRequestHeaders.Add(Constants.HttpHeader.Accept, Constants.HttpHeader.ApplicationJson);
         });
 
         // Register InventoryInternalClient as scoped service (uses IHttpClientService, not raw HttpClient)
@@ -84,7 +130,7 @@ public static class DependencyInjection
         services.AddScoped<IInventoryReservationService, InventoryReservationService>();
 
         // 6. HANGFIRE CONFIGURATION
-        var hangfireDbConnection = configuration.GetSection("Redis")["HangfireDb"] ?? "localhost:6379,password=adminpassword,defaultDatabase=4";
+        var hangfireDbConnection = configuration[Constants.ConfigKeys.RedisHangfireDb] ?? Constants.ConfigDefaults.LocalHangfireRedis;
 
         services.AddHangfire(config => config
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -92,7 +138,7 @@ public static class DependencyInjection
             .UseRecommendedSerializerSettings()
             .UseRedisStorage(hangfireDbConnection, new RedisStorageOptions
             {
-                Prefix = "hangfire:ecommerce:",
+                Prefix = Constants.CachePrefix.HangfirePrefix,
                 Db = 4
             })
             .UseFilter(new AutomaticRetryAttribute { Attempts = 5 })
@@ -105,7 +151,7 @@ public static class DependencyInjection
         AddKafkaMessaging(services, configuration);
 
         // 8. GRPC
-        var grpcServiceHost = configuration.GetSection("GrpcService")["InventoryService"] ?? "http://localhost:5000/";
+        var grpcServiceHost = configuration[Constants.ConfigKeys.GrpcInventoryService] ?? Constants.ConfigDefaults.LocalGrpc;
         var grpcUri = new Uri(grpcServiceHost);
 
         services.AddGrpcClient<WarehouseGrpc.WarehouseGrpcClient>(o => o.Address = grpcUri);
@@ -124,10 +170,6 @@ public static class DependencyInjection
                 .WithBrokers(kafkaBrokers)
 
                 // --- TOPIC CREATION ---
-                .CreateTopicIfNotExists(Constants.KafkaTopic.OrderCreatedTopic, 3, 1)
-                .CreateTopicIfNotExists(Constants.KafkaTopic.OrderUpdatedTopic, 3, 1)
-                .CreateTopicIfNotExists(Constants.KafkaTopic.OrderDeletedTopic, 3, 1)
-                .CreateTopicIfNotExists(Constants.KafkaTopic.OrderCanceledTopic, 3, 1)
                 .CreateTopicIfNotExists(Constants.KafkaTopic.OrderTopic, 3, 1)
                 .CreateTopicIfNotExists(Constants.KafkaTopic.OrderEventsTopic, 3, 1)
                 .CreateTopicIfNotExists(Constants.KafkaTopic.SystemLogsTopic, 3, 1)
@@ -184,11 +226,14 @@ public static class DependencyInjection
                     .AddMiddlewares(middlewares => middlewares
                         .AddSingleTypeDeserializer<OrderReplyDTO, JsonCoreDeserializer>()
                         .RetrySimple(retry => retry
-                            .Handle<Exceptions.DatabaseOperationException>()
+                            .Handle<TransientOperationException>()
+                            .Handle<KafkaException>()
+                            .Handle<RedisException>()
+                            .Handle<RedisTimeoutException>()
+                            .Handle<RedisConnectionException>()
                             .TryTimes(3)
-                            .WithTimeBetweenTriesPlan((retryCount) =>
-                            TimeSpan.FromMilliseconds(Math.Pow(2, retryCount) * 1000)
-                            )
+                            .WithTimeBetweenTriesPlan((retryCount) => Constants.KafkaRetry.InfrastructureRetryDelay)
+                            .Handle<Exception>(x => x.GetType().Name == "DbUpdateException" || x.GetType().Name == "PostgresException")
                         )
                         .AddTypedHandlers(h => h.AddHandler<OrderReplyHandler>())
                     )

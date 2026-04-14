@@ -5,7 +5,7 @@
             "name": "C#: WebAppExam.API Debug",
             "type": "coreclr",
             "request": "launch",
-            "preLaunchTask": "build",
+            "preLaunchTask": "build-api",
             "program": "${workspaceFolder}/WebAppExam.API/bin/Debug/net10.0/WebAppExam.API.dll",
             "args": [],
             "cwd": "${workspaceFolder}/WebAppExam.API",
@@ -30,7 +30,7 @@
             "name": "C#: WebAppExam.BackgroundJobs Debug",
             "type": "coreclr",
             "request": "launch",
-            "preLaunchTask": "build",
+            "preLaunchTask": "build-jobs",
             "program": "${workspaceFolder}/WebAppExam.BackgroundJobs/bin/Debug/net10.0/WebAppExam.BackgroundJobs.dll",
             "args": [],
             "cwd": "${workspaceFolder}/WebAppExam.BackgroundJobs",
@@ -47,6 +47,16 @@
             "logging": {
                 "moduleLoad": false
             }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Debug All Services",
+            "configurations": [
+                "C#: WebAppExam.API Debug",
+                "C#: WebAppExam.BackgroundJobs Debug"
+            ],
+            "stopAll": true
         }
     ]
 }

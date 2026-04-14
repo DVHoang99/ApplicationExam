@@ -62,7 +62,7 @@ public class CustomerService : ICustomerService
 
     public async Task<Result<CustomerDTO>> GetCustomerByIdAsync(Ulid id, CancellationToken cancellationToken = default)
     {
-        var customer = await _cacheService.GetAsync($"{Constants.CachePrefix.OrderDetailPrefix}:{id}", async () =>
+        var customer = await _cacheService.GetAsync($"{Constants.CachePrefix.CustomerDetailPrefix}:{id}", async () =>
         {
             var customer = await _customerRepository.GetByIdAsync(id, cancellationToken);
 
@@ -71,7 +71,7 @@ public class CustomerService : ICustomerService
                 return null;
             }
             return CustomerDTO.FromResult(customer.Id, customer.CustomerName, customer.Email, customer.PhoneNumber);
-        }, TimeSpan.FromDays(1), cancellationToken);
+        }, Constants.CacheDuration.CustomerDetail, cancellationToken);
 
         if (customer == null)
         {

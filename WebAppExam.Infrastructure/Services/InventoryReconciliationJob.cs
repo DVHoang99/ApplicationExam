@@ -2,6 +2,7 @@ using System;
 using WebAppExam.Application.Products.Services;
 using WebAppExam.Application.Services;
 using WebAppExam.Domain.Repository;
+using Microsoft.Extensions.Logging;
 
 namespace WebAppExam.Infrastructure.Services;
 
@@ -10,12 +11,14 @@ public class InventoryReconciliationJob : IInventoryReconciliationJob
     private readonly IProductRepository _productRepository;
     private readonly IInventoryService _inventoryService;
     private readonly IUnitOfWork _uow;
+    private readonly ILogger<InventoryReconciliationJob> _logger;
 
-    public InventoryReconciliationJob(IProductRepository productRepository, IInventoryService inventoryService, IUnitOfWork uow)
+    public InventoryReconciliationJob(IProductRepository productRepository, IInventoryService inventoryService, IUnitOfWork uow, ILogger<InventoryReconciliationJob> logger)
     {
         _productRepository = productRepository;
         _inventoryService = inventoryService;
         _uow = uow;
+        _logger = logger;
     }
 
     public async Task ReconcilePendingProductsAsync()
@@ -24,7 +27,7 @@ public class InventoryReconciliationJob : IInventoryReconciliationJob
 
         if (!pendingProducts.Any()) return;
 
-        //Console.WriteLine("Found {Count} pending products to reconcile.", pendingProducts.Count);
+        _logger.LogInformation("Found {Count} pending products to reconcile.", pendingProducts.Count);
 
         foreach (var product in pendingProducts)
         {
@@ -38,7 +41,7 @@ public class InventoryReconciliationJob : IInventoryReconciliationJob
             {
                 product.UpdateProductStatus(Domain.Enum.ProductStatus.Active);
                 _productRepository.Update(product);
-                //Console.WriteLine("Product {Id} reconciled successfully.", product.Id);
+                _logger.LogInformation("Product {Id} reconciled successfully.", product.Id);
             }
         }
         await _uow.SaveChangesAsync();

@@ -60,21 +60,16 @@ namespace WebAppExam.Application.Orders.EventHandlers
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
-            catch (Confluent.Kafka.ProduceException<string, string> kafkaEx)
+            catch (Confluent.Kafka.KafkaException kafkaEx)
             {
-                _logger.LogError(kafkaEx, "Kafka broker rejected the message for Order: {OrderId}. Reason: {Reason}", message.OrderId, kafkaEx.Error.Reason);
+                _logger.LogError(kafkaEx, "Kafka error while producing message for Order: {OrderId}. Reason: {Reason}", message.OrderId, kafkaEx.Error.Reason);
                 await _outboxService.HandleFailedMessageAsync(outboxMessage, kafkaEx.Message, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
-            catch (TimeoutException timeoutEx)
+            catch (Exception dbEx) when (dbEx.GetType().Name == "DbUpdateException" || dbEx.GetType().Name == "PostgresException")
             {
-                _logger.LogError(timeoutEx, "Timeout while producing Kafka message for Order: {OrderId}.", message.OrderId);
-                await _outboxService.HandleFailedMessageAsync(outboxMessage, "Kafka Timeout", cancellationToken);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-            }
-            catch (DatabaseOperationException dbEx)
-            {
-                _logger.LogCritical(dbEx, "CRITICAL: Kafka message sent for Order {OrderId}, but failed to update Outbox status to Sent.", message.OrderId);
+                _logger.LogError(dbEx, "Database error updating outbox status for Order: {OrderId}.", message.OrderId);
+                throw new WebAppExam.Infrastructure.Exceptions.TransientOperationException("Database commit failed", dbEx);
             }
             catch (Exception ex)
             {
