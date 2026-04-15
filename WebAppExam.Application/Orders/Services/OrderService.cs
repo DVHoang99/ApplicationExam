@@ -68,6 +68,8 @@ public class OrderService : IOrderService
             groupedItems.Select(x => x.WareHouseId).ToList(),
             cancellationToken);
 
+        var dict = products.ToDictionary(x => x.Id, x => x);
+
         // 1. Create Order
         var newOrder = Order.Init(customerId, address, customerName, phoneNumber);
 
@@ -160,7 +162,7 @@ public class OrderService : IOrderService
     public async Task<Result<OrderDTO>> GetOrderDetailAsync(Ulid id, CancellationToken cancellationToken = default)
     {
         var key = $"{Constants.CachePrefix.OrderDetailPrefix}:{id}";
-        var orderDTO = await _cacheService.GetAsync<OrderDTO>(key, async () =>
+        var orderDTO = await _cacheService.GetAsync<OrderDTO?>(key, async () =>
         {
             var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
 
@@ -277,6 +279,8 @@ public class OrderService : IOrderService
                 if (removedItem != null) itemUpdated.Add(removedItem);
             }
 
+            var previousStatus = order.Status;
+
             order.UpdateOrderStatus(OrderStatus.Updating, "Updating...");
 
             _orderRepository.Update(order);
@@ -294,7 +298,7 @@ public class OrderService : IOrderService
             var outboxMessageId = Ulid.NewUlid();
 
             // Attach Events
-            var orderUpdateEvent = OrderUpdatedEvent.Init(order.Id.ToString(), order.CustomerName, itemUpdatedEvent, outboxMessageId.ToString());
+            var orderUpdateEvent = OrderUpdatedEvent.Init(order.Id.ToString(), order.CustomerName, itemUpdatedEvent, outboxMessageId.ToString(), previousStatus);
 
             var contentMessage = JsonSerializer.Serialize(orderUpdateEvent);
 

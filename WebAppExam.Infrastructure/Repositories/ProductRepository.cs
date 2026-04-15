@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MongoDB.Driver.Linq;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Repository;
 using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
@@ -14,7 +15,9 @@ public class ProductRepository : Repository<Product>, IProductRepository
 
     public new async Task AddAsync(Product product, CancellationToken cancellationToken = default)
     {
-        await _context.Products.AddAsync(product, cancellationToken);
+        await Query.AddAsync(product, cancellationToken);
+
+        var a = Query().Where(x => x.Id == product.Id).ToQueryString();
     }
 
     public new void Update(Product product)
@@ -64,13 +67,18 @@ public class ProductRepository : Repository<Product>, IProductRepository
             x.DeletedAt == null)
             .ToDictionaryAsync(x => x.Id, x => x, cancellationToken);
     }
-    public async Task<Dictionary<Ulid, Product>> GetProductByIdsAndWareHouseIdsAsync(List<Ulid> ids, List<string> wareHouseIds, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Product>> GetProductByIdsAndWareHouseIdsAsync(List<Ulid> ids, List<string> wareHouseIds, CancellationToken cancellationToken = default)
     {
         return await _context.Products
             .Where(x => ids.Contains(x.Id) &&
             x.DeletedAt == null &&
             wareHouseIds.Contains(x.WareHouseId))
-            .ToDictionaryAsync(x => x.Id, x => x, cancellationToken);
+            .AsNoTracking()
+            .ToDictionaryAsync(x => x.Id, x => new {id = x.Id }, cancellationToken);
+
+            
+
+
     }
 
     public IQueryable<Product> SearchProductNameQuery(IQueryable<Product> query, string searchTerm)

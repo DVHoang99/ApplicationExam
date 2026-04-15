@@ -88,11 +88,6 @@ public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
             _logger.LogError(redisEx, "Redis Error processing order reply message {MessageId}", messageId);
             throw new RedisException("Redis cache operation failed", redisEx);
         }
-        catch (Exception dbEx) when (dbEx.GetType().Name == "DbUpdateException" || dbEx.GetType().Name == "PostgresException")
-        {
-            _logger.LogError(dbEx, "Database Error processing order reply message {MessageId}", messageId);
-             throw new TransientOperationException("Database Error processing order reply message");
-        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unknown Error processing order reply message {MessageId}", messageId);
@@ -121,13 +116,13 @@ public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
             return;
         }
 
-        if (messageDto.Status == Domain.Enum.OrderStatus.Pending)
+        if (messageDto.Status != Domain.Enum.OrderStatus.Failed)
         {
             order.UpdateOrderStatus(messageDto.Status, messageDto.Reason);
         }
         else
         {
-            order.UpdateOrderStatus(Domain.Enum.OrderStatus.Pending, messageDto.Reason);
+            order.UpdateOrderStatus(messageDto.Status, messageDto.Reason);
             RollbackOrder(messageDto, order);
         }
 
@@ -146,7 +141,7 @@ public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
     {
         foreach (var item in messageDto.Data)
         {
-            order.AddOrUpdateItem(item.ProductId, item.Price, item.Quantity, Ulid.Parse(item.WareHouseId));
+            order.RollBackItem(item.ProductId, item.Price, item.Quantity, Ulid.Parse(item.WareHouseId));
         }
     }
     private async Task Canceled(OrderReplyDTO messageDto, IOrderRepository repository, IUnitOfWork uow, IDailyRevenueRepository dailyRevenueRepository)

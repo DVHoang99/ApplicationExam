@@ -29,6 +29,7 @@ using ZiggyCreatures.Caching.Fusion;
 using ZiggyCreatures.Caching.Fusion.Backplane.StackExchangeRedis;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using ZiggyCreatures.Caching.Fusion.Serialization.NewtonsoftJson;
+using Npgsql;
 
 namespace WebAppExam.Infrastructure;
 
@@ -41,11 +42,12 @@ public static class DependencyInjection
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
         // 2. REDIS & CACHING
-        services.AddSingleton<IConnectionMultiplexer>(sp => 
+        services.AddSingleton<IConnectionMultiplexer>(sp =>
             ConnectionMultiplexer.Connect(configuration[Constants.ConfigKeys.RedisCacheDb] ?? Constants.ConfigDefaults.LocalRedis));
 
         services.AddFusionCache()
-        .WithOptions(options => {
+        .WithOptions(options =>
+        {
             // We can't explicitly set the memory cache here in the builder easily in 2.6.0
             // but we can ensure the registration order is correct.
         })
@@ -55,12 +57,12 @@ public static class DependencyInjection
             // The Time-To-Live (TTL) for the local Memory Cache (RAM / L1).
             // Keeps the data ultra-fast and accessible in-memory for 5 minutes.
             Duration = Constants.CacheDuration.DefaultL1,
-            
+
             // The Time-To-Live (TTL) specifically for the Distributed Cache (Redis / L2).
             // By setting this, Redis will hold the data for 2 hours, even if the RAM cache expires.
             // If left unset, it automatically falls back to the L1 Duration.
             DistributedCacheDuration = Constants.CacheDuration.DefaultL2,
-            
+
             // Cache Stampede (Thundering Herd) prevention.
             // Adds a random jitter (0 to 30 seconds) to the Duration to prevent multiple 
             // cache keys from expiring at the exact same time and overloading the Database.
@@ -162,7 +164,7 @@ public static class DependencyInjection
 
     private static void AddKafkaMessaging(IServiceCollection services, IConfiguration configuration)
     {
-        var kafkaBrokers = configuration.GetSection("KafkaConfig:Brokers").Get<string[]>() ?? new[] { "localhost:9092" };
+        var kafkaBrokers = configuration.GetSection("KafkaConfig:Brokers").Get<string[]>() ?? throw new InvalidOperationException("Kafka brokers configuration is missing.");
 
         services.AddKafka(kafka => kafka
             .UseConsoleLog()
@@ -182,12 +184,12 @@ public static class DependencyInjection
                         .DefaultTopic(Constants.KafkaTopic.OrderEventsTopic)
                         .AddMiddlewares(m => m.AddSerializer<JsonCoreSerializer>())
                 )
-                .AddProducer(
-                    Constants.KafkaProducer.SystemLogsProducer,
-                    producer => producer
-                        .DefaultTopic(Constants.KafkaTopic.SystemLogsTopic)
-                        .AddMiddlewares(m => m.AddSerializer<JsonCoreSerializer>())
-                )
+                // .AddProducer(
+                //     Constants.KafkaProducer.SystemLogsProducer,
+                //     producer => producer
+                //         .DefaultTopic(Constants.KafkaTopic.SystemLogsTopic)
+                //         .AddMiddlewares(m => m.AddSerializer<JsonCoreSerializer>())
+                // )
                 .AddProducer(
                     Constants.KafkaProducer.OrderProducer,
                     producer => producer
@@ -231,9 +233,9 @@ public static class DependencyInjection
                             .Handle<RedisException>()
                             .Handle<RedisTimeoutException>()
                             .Handle<RedisConnectionException>()
+                            .Handle<Exception>(x => x is DbUpdateException or PostgresException)
                             .TryTimes(3)
-                            .WithTimeBetweenTriesPlan((retryCount) => Constants.KafkaRetry.InfrastructureRetryDelay)
-                            .Handle<Exception>(x => x.GetType().Name == "DbUpdateException" || x.GetType().Name == "PostgresException")
+                            .WithTimeBetweenTriesPlan((retryCount) => Constants.KafkaRetry.ExponentialRetryDelay(retryCount))
                         )
                         .AddTypedHandlers(h => h.AddHandler<OrderReplyHandler>())
                     )

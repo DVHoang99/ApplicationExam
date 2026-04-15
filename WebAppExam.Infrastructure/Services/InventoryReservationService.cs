@@ -132,8 +132,8 @@ public class InventoryReservationService : IInventoryReservationService
                 -- INCRBY will add the quantity back to the current stock
                 redis.call('INCRBY', KEYS[i], qtyToRelease)
             end
-        ";
 
+        ";
         // Execute Script (Fire and forget, no need to await result here)
         await _db.ScriptEvaluateAsync(luaScript, keys, values);
     }

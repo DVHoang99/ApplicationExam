@@ -7,8 +7,8 @@ namespace WebAppExam.Infrastructure.Repositories;
 
 public class Repository<T> : IRepository<T> where T : class
 {
-    protected readonly AppDbContext _context;
-    protected readonly DbSet<T> _dbSet;
+    private readonly AppDbContext _context;
+    private readonly DbSet<T> _dbSet;
 
     public Repository(AppDbContext context)
     {

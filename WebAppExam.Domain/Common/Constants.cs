@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 
 namespace WebAppExam.Domain.Common;
 
@@ -41,7 +42,14 @@ public static class Constants
     public static class KafkaRetry
     {
         public const int DefaultRetryCount = 3;
-        public static readonly TimeSpan InfrastructureRetryDelay = TimeSpan.FromMinutes(5);
+        public static TimeSpan ExponentialRetryDelay(int retryCount)
+        {
+            double baseDelaySeconds = 2.0;
+            // Dùng Math.Pow để tính lũy thừa 2^(retryCount - 1)
+            double delay = baseDelaySeconds * Math.Pow(2, retryCount - 1);
+
+            return TimeSpan.FromSeconds(delay);
+        }
     }
 
     public static class CachePrefix
@@ -50,7 +58,7 @@ public static class Constants
         public const string CustomerDetailPrefix = "customer-detail";
         public const string ProductDetailPrefix = "product_details";
         public const string HangfirePrefix = "hangfire:ecommerce:";
-        
+
         public static string InventoriesStock(string wareHouseId, string productId)
         {
             return $"inventory:stock:{wareHouseId}:{productId}";

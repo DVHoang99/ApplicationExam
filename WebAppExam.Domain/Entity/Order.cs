@@ -52,6 +52,18 @@ namespace WebAppExam.Domain
             return affectedItem;
         }
 
+        public void RollBackItem(Ulid productId, int unitPrice, int quantity, Ulid wereHouseId)
+        {
+            var existingItem = _details.SingleOrDefault(x => x.ProductId == productId && x.WareHouseId == wereHouseId);
+
+            if (existingItem != null)
+            {
+                existingItem.UpdateQuantity(existingItem.Quantity + quantity);
+            }
+
+            RecalculateTotal();
+        }
+
         public OrderDetail? RemoveItem(Ulid productId, string wareHouseId)
         {
             var parsedWareHouseId = Ulid.Parse(wareHouseId);

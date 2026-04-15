@@ -66,11 +66,6 @@ public class OrderCanceledEventHandler : INotificationHandler<OrderCanceledEvent
             await _outboxService.HandleFailedMessageAsync(outboxMessage, kafkaEx.Message, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
-        catch (Exception dbEx) when (dbEx.GetType().Name == "DbUpdateException" || dbEx.GetType().Name == "PostgresException")
-        {
-            _logger.LogError(dbEx, "Database error updating outbox status for Order: {OrderId}.", message.OrderId);
-            throw new WebAppExam.Infrastructure.Exceptions.TransientOperationException("Database commit failed", dbEx);
-        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to produce Kafka message for Order: {OrderId}. Outbox will remain Pending.", message.OrderId);

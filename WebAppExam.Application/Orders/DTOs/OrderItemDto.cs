@@ -2,17 +2,13 @@ namespace WebAppExam.Application.Orders.DTOs;
 
 public class OrderItemDTO
 {
-    public Ulid ProductId { get; private set; }
-    public int Quantity { get; private set; }
-    public required string WareHouseId { get; set; }
+    public Ulid ProductId { get; }
+    public int Quantity { get;}
+    public string WareHouseId { get; private set; }
 
-    public static OrderItemDTO Init(Ulid productId, int quantity, string wareHouseId)
+    public OrderItemDTO()
     {
-        return new OrderItemDTO
-        {
-            ProductId = productId,
-            Quantity = quantity,
-            WareHouseId = wareHouseId
-        };
+        
     }
+
 }
