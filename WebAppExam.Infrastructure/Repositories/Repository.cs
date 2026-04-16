@@ -7,8 +7,8 @@ namespace WebAppExam.Infrastructure.Repositories;
 
 public class Repository<T> : IRepository<T> where T : class
 {
-    private readonly AppDbContext _context;
-    private readonly DbSet<T> _dbSet;
+    protected readonly AppDbContext _context;
+    protected readonly DbSet<T> _dbSet;
 
     public Repository(AppDbContext context)
     {
@@ -63,5 +63,10 @@ public class Repository<T> : IRepository<T> where T : class
     public IQueryable<T> Query()
     {
         return _dbSet.AsQueryable();
+    }
+
+    public async Task<List<T>> ToListAsync(IQueryable<T> query, CancellationToken cancellationToken = default)
+    {
+        return await query.ToListAsync(cancellationToken);
     }
 }

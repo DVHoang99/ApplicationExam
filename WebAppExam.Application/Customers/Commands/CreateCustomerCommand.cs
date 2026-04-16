@@ -1,7 +1,7 @@
 using FluentResults;
 using WebAppExam.Application.Shared;
 
-namespace WebAppExam.Application.Customers.Command;
+namespace WebAppExam.Application.Customers.Commands;
 
 public class CreateCustomerCommand(string customerName, string email, string phone) : ICommand<Result<Ulid>>
 {

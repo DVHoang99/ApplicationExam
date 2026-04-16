@@ -1,6 +1,6 @@
 using System;
 using FluentValidation;
-using WebAppExam.Application.Customers.Command;
+using WebAppExam.Application.Customers.Commands;
 using WebAppExam.Application.Orders.Commands;
 
 namespace WebAppExam.Application.Customers.Commands;

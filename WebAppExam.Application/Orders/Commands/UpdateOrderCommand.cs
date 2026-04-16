@@ -1,6 +1,3 @@
-using System;
-using System.Runtime.Serialization;
-using System.Windows.Input;
 using FluentResults;
 using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Application.Shared;
@@ -23,7 +20,7 @@ public class UpdateOrderCommand(
     public List<OrderItemDTO> Items { get; private set; } = items;
     public static UpdateOrderCommand Init(Ulid id, OrderDTO input)
     {
-        var orderItemDTO = input.Details.Select(x => OrderItemDTO.Init(x.ProductId, x.Quantity, x.WareHouseId)).ToList();
+        var orderItemDTO = input.Details.Select(x => new OrderItemDTO(x.ProductId, x.Quantity, x.WareHouseId)).ToList();
 
         return new UpdateOrderCommand(id, input.CustomerId, input.CustomerName, input.Address, input.PhoneNumber, orderItemDTO);
     }

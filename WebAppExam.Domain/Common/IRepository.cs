@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 
 namespace WebAppExam.Domain.Common
 {
@@ -24,5 +24,6 @@ namespace WebAppExam.Domain.Common
         void Remove(T entity);
 
         IQueryable<T> Query();
+        Task<List<T>> ToListAsync(IQueryable<T> query, CancellationToken cancellationToken = default);
     }
 }

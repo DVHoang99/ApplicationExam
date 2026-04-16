@@ -47,6 +47,14 @@ namespace WebAppExam.Infrastructure.Persistence.Configurations
                 .IsRequired()
                 .HasMaxLength(200);
 
+            builder.Property(x => x.RetryCount)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            builder.Property(x => x.IsPermanentFailure)
+                .IsRequired()
+                .HasDefaultValue(false);
+
             builder.HasIndex(x => x.Status)
                 .HasDatabaseName("idx_outbox_messages_status");
 
@@ -58,6 +66,9 @@ namespace WebAppExam.Infrastructure.Persistence.Configurations
 
             builder.HasIndex(x => x.MessageId)
                 .HasDatabaseName("idx_outbox_messages_message_id");
+
+            builder.HasIndex(x => new { x.IsPermanentFailure, x.Status })
+                .HasDatabaseName("idx_outbox_messages_permanent_failure_status");
         }
     }
 }

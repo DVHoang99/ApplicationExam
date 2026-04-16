@@ -14,7 +14,8 @@ public class MessageTypeResolver : IMessageTypeResolver
         { "OrderCreatedEvent", typeof(OrderCreatedEvent) },
         { "OrderUpdatedEvent", typeof(OrderUpdatedEvent) },
         { "OrderCanceledEvent", typeof(OrderCanceledEvent) },
-        { "OrderDeletedEvent", typeof(OrderDeletedEvent) }
+        { "OrderDeletedEvent", typeof(OrderDeletedEvent) },
+        { "OrderItemProcessedEvent", typeof(OrderItemProcessedEvent) }
     };
     private readonly ILogger<MessageTypeResolver> _logger;
 
@@ -66,6 +67,10 @@ public class MessageTypeResolver : IMessageTypeResolver
             else if (type == typeof(OrderDeletedEvent))
             {
                 aliasName = nameof(OrderDeletedEvent);
+            }
+            else if (type == typeof(OrderItemProcessedEvent))
+            {
+                aliasName = nameof(OrderItemProcessedEvent);
             }
 
             // 3. Đóng dấu tên ngắn vào Header

@@ -16,19 +16,19 @@ using WebAppExam.Infrastructure.Common.Caching;
 using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
 using WebAppExam.Infrastructure.Repositories;
 using WebAppExam.Infrastructure.Services;
-using WebAppExam.API.Common.Kafka;
 using WebAppExam.Application.Products.Services;
-using WebAppExam.Application.Common;
-using WebAppExam.GrpcContracts.Protos;
 using Hangfire.Redis.StackExchange;
 using KafkaFlow.Retry;
-using WebAppExam.Infrastructure.Exceptions;
 using Confluent.Kafka;
 using StackExchange.Redis;
 using ZiggyCreatures.Caching.Fusion;
 using ZiggyCreatures.Caching.Fusion.Backplane.StackExchangeRedis;
-using Microsoft.Extensions.Caching.StackExchangeRedis;
 using ZiggyCreatures.Caching.Fusion.Serialization.NewtonsoftJson;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
+using WebAppExam.GrpcContracts.Protos;
+using WebAppExam.Application.Common;
+using WebAppExam.API.Common.Kafka;
+using WebAppExam.Infrastructure.Exceptions;
 using Npgsql;
 
 namespace WebAppExam.Infrastructure;
@@ -144,10 +144,12 @@ public static class DependencyInjection
                 Db = 4
             })
             .UseFilter(new AutomaticRetryAttribute { Attempts = 5 })
+            .UseFilter(new WebAppExam.Infrastructure.Common.Hangfire.OutboxJobFilter())
         );
 
         services.AddHangfireServer();
         services.AddScoped<InventoryReconciliationJob, InventoryReconciliationJob>();
+        services.AddScoped<WebAppExam.Infrastructure.Jobs.ProcessOutboxJob>();
 
         // 7. KAFKA CONFIGURATION
         AddKafkaMessaging(services, configuration);

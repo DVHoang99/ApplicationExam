@@ -1,4 +1,3 @@
-using System.Security.Cryptography.X509Certificates;
 using Microsoft.EntityFrameworkCore;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Enum;

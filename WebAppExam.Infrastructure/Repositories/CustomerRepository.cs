@@ -42,10 +42,6 @@ public class CustomerRepository : Repository<Customer>, ICustomerRepository
         ));
     }
 
-    public Task<List<Customer>> ToListAsync(IQueryable<Customer> query, CancellationToken cancellationToken = default)
-    {
-        return query.ToListAsync(cancellationToken);
-    }
     public IQueryable<Customer> PaginationQuery(IQueryable<Customer> query, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
     {
         return query.Skip((pageNumber - 1) * pageSize).Take(pageSize);

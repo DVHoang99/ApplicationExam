@@ -1,10 +1,12 @@
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using FluentResults;
+using Microsoft.EntityFrameworkCore;
 using WebAppExam.Application.Common;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Application.Orders.Events;
+using WebAppExam.Application.OutboxMessages;
+using WebAppExam.Application.Services;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Common;
 using WebAppExam.Domain.Entity;
@@ -23,6 +25,7 @@ public class OrderService : IOrderService
     private readonly ICacheService _cacheService;
     private readonly IDailyRevenueRepository _dailyRepository;
     private readonly IOutboxMessageRepository _outboxMessageRepository;
+    private readonly IHangfireJobService _jobService;
 
     public OrderService(
         ICustomerRepository customerRepository,
@@ -31,7 +34,8 @@ public class OrderService : IOrderService
         IInventoryReservationService inventoryReservationService,
         ICacheService cacheService,
         IDailyRevenueRepository dailyRepository,
-        IOutboxMessageRepository outboxMessageRepository
+        IOutboxMessageRepository outboxMessageRepository,
+        IHangfireJobService jobService
         )
     {
         _customerRepository = customerRepository;
@@ -41,6 +45,7 @@ public class OrderService : IOrderService
         _cacheService = cacheService;
         _dailyRepository = dailyRepository;
         _outboxMessageRepository = outboxMessageRepository;
+        _jobService = jobService;
     }
 
     public async Task<Result<Ulid>> CreateOrderAsync(Ulid customerId, string address, string phoneNumber, string customerName, List<OrderItemDTO> items, CancellationToken cancellationToken = default)
@@ -59,16 +64,14 @@ public class OrderService : IOrderService
 
         var groupedItems = items
             .GroupBy(x => new { x.ProductId, x.WareHouseId })
-            .Select(g => OrderItemDTO.Init(g.Key.ProductId, g.Sum(x => x.Quantity), g.Key.WareHouseId))
+            .Select(g => new OrderItemDTO(g.Key.ProductId, g.Sum(x => x.Quantity), g.Key.WareHouseId))
             .OrderBy(x => x.ProductId)
             .ToList();
 
-        var products = await _productRepository.GetProductByIdsAndWareHouseIdsAsync(
+        var products = await _productRepository.GetProductByIdsAndWareHouseIdsQuery(
             groupedItems.Select(x => x.ProductId).ToList(),
-            groupedItems.Select(x => x.WareHouseId).ToList(),
-            cancellationToken);
-
-        var dict = products.ToDictionary(x => x.Id, x => x);
+            groupedItems.Select(x => x.WareHouseId).ToList())
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
 
         // 1. Create Order
         var newOrder = Order.Init(customerId, address, customerName, phoneNumber);
@@ -85,28 +88,39 @@ public class OrderService : IOrderService
 
         await _inventoryReservationService.ReserveStocksAsync(customerId, groupedItems);
 
-        // 2. Create outbox message and save everything in transaction
-        var orderItemEvent = groupedItems.Select(x => OrderItemEvent.Init(x.ProductId.ToString(), x.Quantity, x.WareHouseId.ToString())).ToList();
-
-        var outboxMessageId = Ulid.NewUlid();
-
-        var orderCreatedEvent = OrderCreatedEvent.Init(newOrder.Id.ToString(), newOrder.CustomerName, orderItemEvent, outboxMessageId.ToString());
-
-        var contentMessage = JsonSerializer.Serialize(orderCreatedEvent);
-
-        var outboxMessage = OutboxMessage.Init(
-            outboxMessageId,
-            nameof(OrderCreatedEvent),
-            contentMessage,
-            $"{Constants.KafkaPrefix.OrderCreatedPrefix}:{orderCreatedEvent.OrderId}"
-        );
-
         try
         {
             await _orderRepository.AddAsync(newOrder, cancellationToken);
-            await _outboxMessageRepository.AddAsync(outboxMessage, cancellationToken);
 
-            newOrder.AddDomainEvent(orderCreatedEvent);
+            // 2. Create one outbox message for each item and enqueue immediate publication
+            foreach (var item in groupedItems)
+            {
+                var itemOutboxId = Ulid.NewUlid();
+                var itemProcessedEvent = OrderItemProcessedEvent.Create(
+                    newOrder.Id.ToString(),
+                    newOrder.CustomerName,
+                    item.ProductId.ToString(),
+                    item.Quantity,
+                    item.WareHouseId.ToString(),
+                    itemOutboxId.ToString()
+                );
+
+                var kafkaKey = $"{Constants.KafkaPrefix.OrderCreatedPrefix}:{newOrder.Id}:{item.ProductId}";
+
+                var itemOutbox = OutboxMessage.Init(
+                    itemOutboxId,
+                    nameof(OrderItemProcessedEvent),
+                    JsonSerializer.Serialize(itemProcessedEvent),
+                    kafkaKey
+                );
+
+                // Save to DB (Safety Net)
+                await _outboxMessageRepository.AddAsync(itemOutbox, cancellationToken);
+                
+                // Enqueue to Hangfire (Performance Optimization: Pass event directly)
+                // This fulfills: "just publish event dont get outbox, it just send messgae"
+                _jobService.Enqueue<IOutboxService>(s => s.PublishMessageAsync(itemOutboxId, kafkaKey, itemProcessedEvent, CancellationToken.None));
+            }
 
             return Result.Ok(newOrder.Id);
         }
@@ -208,13 +222,15 @@ public class OrderService : IOrderService
 
         var groupedItems = items
             .GroupBy(x => new { x.ProductId, x.WareHouseId })
-            .Select(g => OrderItemDTO.Init(g.Key.ProductId, g.Sum(x => x.Quantity), g.Key.WareHouseId))
+            .Select(g => new OrderItemDTO(g.Key.ProductId, g.Sum(x => x.Quantity), g.Key.WareHouseId))
             .OrderBy(x => x.ProductId)
             .ToList();
 
         var allProductIds = groupedItems.Select(x => x.ProductId)
             .Union(order.Details.Select(x => x.ProductId)).ToList();
-        var products = await _productRepository.GetProductByIdsAsync(allProductIds, cancellationToken);
+        
+        var products = await _productRepository.GetProductByIdsQuery(allProductIds)
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
 
         var itemsToReserve = new List<OrderItemDTO>();
         var itemsToRelease = new List<OrderItemDTO>();
@@ -227,7 +243,7 @@ public class OrderService : IOrderService
 
         foreach (var del in itemsToDelete)
         {
-            itemsToRelease.Add(OrderItemDTO.Init(del.ProductId, del.Quantity, del.WareHouseId.ToString()));
+            itemsToRelease.Add(new OrderItemDTO(del.ProductId, del.Quantity, del.WareHouseId.ToString()));
         }
 
         foreach (var req in groupedItems)
@@ -245,12 +261,12 @@ public class OrderService : IOrderService
             if (delta > 0)
             {
                 // User increased quantity (or new item) -> Need to reserve more
-                itemsToReserve.Add(OrderItemDTO.Init(req.ProductId, delta, req.WareHouseId));
+                itemsToReserve.Add(new OrderItemDTO(req.ProductId, delta, req.WareHouseId));
             }
             else if (delta < 0)
             {
                 // User decreased quantity -> Need to release the freed stock
-                itemsToRelease.Add(OrderItemDTO.Init(req.ProductId, Math.Abs(delta), req.WareHouseId));
+                itemsToRelease.Add(new OrderItemDTO(req.ProductId, Math.Abs(delta), req.WareHouseId));
             }
         }
 
@@ -370,7 +386,7 @@ public class OrderService : IOrderService
 
         order.AddDomainEvent(new OrderCreatedIntegrationEvent(order.Id, -order.TotalAmount, DateTime.UtcNow, -1));
 
-        var itemsToRelease = order.Details.Select(x => OrderItemDTO.Init(x.ProductId, x.Quantity, x.WareHouseId.ToString())).ToList();
+        var itemsToRelease = order.Details.Select(x => new OrderItemDTO(x.ProductId, x.Quantity, x.WareHouseId.ToString())).ToList();
 
         if (itemsToRelease.Any())
         {
@@ -422,7 +438,7 @@ public class OrderService : IOrderService
 
         order.AddDomainEvent(new OrderCreatedIntegrationEvent(order.Id, -order.TotalAmount, DateTime.UtcNow, -1));
 
-        var itemsToRelease = order.Details.Select(x => OrderItemDTO.Init(x.ProductId, x.Quantity, x.WareHouseId.ToString())).ToList();
+        var itemsToRelease = order.Details.Select(x => new OrderItemDTO(x.ProductId, x.Quantity, x.WareHouseId.ToString())).ToList();
 
         if (itemsToRelease.Any())
         {
