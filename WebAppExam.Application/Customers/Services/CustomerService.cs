@@ -2,6 +2,7 @@
 using System.Reflection.Metadata.Ecma335;
 using FluentResults;
 using Microsoft.AspNetCore.Mvc.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Customers.DTOs;
 using WebAppExam.Domain;
@@ -23,7 +24,11 @@ public class CustomerService : ICustomerService
 
     public async Task<Result<Ulid>> CreateCustomerAync(string customerName, string email, string phone, CancellationToken cancellationToken = default)
     {
-        var customerByEmail = await _customerRepository.GetCustomerByEmailAsync(email);
+        var customerByEmail = await _customerRepository
+        .Query()
+        .Where(c => c.Email == email && c.DeletedAt == null)
+        .AsNoTracking()
+        .FirstOrDefaultAsync(cancellationToken);
 
         if (customerByEmail != null)
         {
