@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -54,6 +54,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WebAppExam.Domain\WebAppExam.Domain.csproj" />
+    <ProjectReference Include="..\WebAppExam.GrpcContracts\WebAppExam.GrpcContracts.csproj" />
   </ItemGroup>
 
 

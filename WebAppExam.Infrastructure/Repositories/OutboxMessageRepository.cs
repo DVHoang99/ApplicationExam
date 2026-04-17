@@ -17,7 +17,7 @@ public class OutboxMessageRepository : Repository<OutboxMessage>, IOutboxMessage
 
     public async Task<List<OutboxMessage>> GetPendingMessagesAsync(int batchSize, DateTime olderThan, CancellationToken cancellationToken = default)
     {
-        return await _dbSet.Where(m => m.Status == Domain.Enum.OutboxMessageStatus.Pending && m.CreatedAt < olderThan)
+        return await Query().Where(m => m.Status == Domain.Enum.OutboxMessageStatus.Pending && m.CreatedAt < olderThan)
                             .OrderBy(m => m.CreatedAt)
                             .Take(batchSize)
                             .ToListAsync();
@@ -26,7 +26,7 @@ public class OutboxMessageRepository : Repository<OutboxMessage>, IOutboxMessage
     public async Task UpdateStatusAsync(Ulid id, OutboxMessageStatus status, string? error = null, bool? isPermanentFailure = null, int? retryCount = null, CancellationToken cancellationToken = default)
     {
         // Use EF Core ExecuteUpdateAsync for a high-performance, single-query update without prior SELECT.
-        var query = _dbSet.Where(x => x.Id == id);
+        var query = Query().Where(x => x.Id == id);
 
         // We use a fixed expression to avoid dynamic lambda complexity which can be finicky in EF Core
         await query.ExecuteUpdateAsync(s => s

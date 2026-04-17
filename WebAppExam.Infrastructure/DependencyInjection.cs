@@ -30,6 +30,7 @@ using WebAppExam.Application.Common;
 using WebAppExam.API.Common.Kafka;
 using WebAppExam.Infrastructure.Exceptions;
 using Npgsql;
+using WebAppExam.Infrastructure.Common.Interceptors;
 
 namespace WebAppExam.Infrastructure;
 
@@ -144,7 +145,6 @@ public static class DependencyInjection
                 Db = 4
             })
             .UseFilter(new AutomaticRetryAttribute { Attempts = 5 })
-            .UseFilter(new WebAppExam.Infrastructure.Common.Hangfire.OutboxJobFilter())
         );
 
         services.AddHangfireServer();
@@ -158,8 +158,19 @@ public static class DependencyInjection
         var grpcServiceHost = configuration[Constants.ConfigKeys.GrpcInventoryService] ?? Constants.ConfigDefaults.LocalGrpc;
         var grpcUri = new Uri(grpcServiceHost);
 
-        services.AddGrpcClient<WarehouseGrpc.WarehouseGrpcClient>(o => o.Address = grpcUri);
-        services.AddGrpcClient<InventoryGrpc.InventoryGrpcClient>(o => o.Address = grpcUri);
+        var outboxGrpcHost = configuration[Constants.ConfigKeys.GrpcOutboxService] ?? Constants.ConfigDefaults.LocalGrpc;
+        var outboxGrpcUri = new Uri(outboxGrpcHost);
+
+        services.AddSingleton<InternalApiKeyInterceptor>();
+
+        services.AddGrpcClient<WarehouseGrpc.WarehouseGrpcClient>(o => o.Address = grpcUri)
+            .AddInterceptor<InternalApiKeyInterceptor>();
+            
+        services.AddGrpcClient<InventoryGrpc.InventoryGrpcClient>(o => o.Address = grpcUri)
+            .AddInterceptor<InternalApiKeyInterceptor>();
+            
+        services.AddGrpcClient<OutboxGrpc.OutboxGrpcClient>(o => o.Address = outboxGrpcUri)
+            .AddInterceptor<InternalApiKeyInterceptor>();
 
         return services;
     }

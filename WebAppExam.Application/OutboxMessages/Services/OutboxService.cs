@@ -12,6 +12,8 @@ using WebAppExam.Domain.Common;
 using WebAppExam.Domain.Entity;
 using WebAppExam.Domain.Enum;
 using WebAppExam.Domain.Events;
+using WebAppExam.Domain.Exceptions;
+using WebAppExam.Application.OutboxMessages.DTOs;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.OutboxMessages.Services;
@@ -73,18 +75,84 @@ public class OutboxService : IOutboxService
     }
 
     /// <summary>
-    /// Pure Kafka Message Publisher.
-    /// This method is decoupled from the database. 
-    /// Status updates (Sent/Failed) are handled by the OutboxJobFilter (the "Handler").
+    /// Publishes a message to Kafka and updates the outbox record status.
+    /// This method is intended to be called within a Hangfire background job.
+    /// It ensures that success/failure is recorded in the database.
     /// </summary>
     public async Task PublishMessageAsync(Ulid outboxMessageId, string kafkaKey, object message, CancellationToken cancellationToken = default)
     {
-        // PURE DISPATCH LOGIC
-        // Zero database reads or writes here.
-        var producer = _producerAccessor.GetProducer(Constants.KafkaProducer.OrderProducer);
-        await producer.ProduceAsync(kafkaKey, message);
-        
-        _logger.LogDebug("Kafka Producer: Message {Id} sent to Kafka successfully.", outboxMessageId);
+        // CLAIM CHECK PATTERN: For Order events, we send an OutboxPointer instead of the full payload.
+        object messageToSend = message;
+        bool isOrderEvent = message is OrderItemProcessedEvent || 
+                            message is OrderUpdatedEvent || 
+                            message is OrderDeletedEvent || 
+                            message is OrderCanceledEvent || 
+                            message is OrderCreatedIntegrationEvent;
+
+        if (isOrderEvent)
+        {
+            messageToSend = new OutboxPointer(outboxMessageId.ToString(), message.GetType().Name);
+        }
+
+        bool kafkaSuccess = false;
+        string kafkaError = string.Empty;
+
+        // 1. KAFKA RETRY LOOP (Manual loop to separate from DB errors)
+        int maxRetries = 3;
+        for (int retryCount = 1; retryCount <= maxRetries; retryCount++)
+        {
+            try
+            {
+                var producer = _producerAccessor.GetProducer(Constants.KafkaProducer.OrderProducer);
+                await producer.ProduceAsync(kafkaKey, messageToSend);
+                kafkaSuccess = true;
+                break;
+            }
+            catch (Exception ex)
+            {
+                kafkaError = ex.Message;
+                bool isPermanent = ex is PermanentOutboxException || ex is JsonException || ex is ArgumentException;
+
+                if (isPermanent || retryCount == maxRetries)
+                {
+                    _logger.LogError(ex, "Outbox Service: Kafka failed {Type} for message {Id} after {Attempt} attempts.", 
+                        isPermanent ? "PERMANENTLY" : "FINAL", outboxMessageId, retryCount);
+                    break;
+                }
+
+                _logger.LogWarning(ex, "Outbox Service: Kafka attempt {Attempt} failed for message {Id}. Retrying...", retryCount, outboxMessageId);
+                await Task.Delay(1000 * retryCount, cancellationToken);
+            }
+        }
+
+        // 2. DATABASE UPDATE (Isolated - No Rethrow to stop Hangfire retry)
+        try
+        {
+            if (kafkaSuccess)
+            {
+                await _outboxMessageRepository.UpdateStatusAsync(outboxMessageId, OutboxMessageStatus.Sent);
+                _logger.LogInformation("Outbox Service: Message {Id} sent to Kafka and status updated to Sent.", outboxMessageId);
+            }
+            else
+            {
+                // Kafka failed after all retries or permanent error
+                await _outboxMessageRepository.UpdateStatusAsync(
+                    outboxMessageId, 
+                    OutboxMessageStatus.Failed, 
+                    $"Kafka Error: {kafkaError}", 
+                    isPermanentFailure: true);
+                
+                _logger.LogCritical("Outbox Service: Message {Id} marked as FAILED in DB after Kafka failures.", outboxMessageId);
+            }
+        }
+        catch (Exception ex)
+        {
+            // DATABASE ERROR: We do NOT rethrow here as requested.
+            // This prevents Hangfire from retrying and sending duplicate messages to Kafka.
+            // The "Safe Net" polling job will find the message remains 'Pending' and handle it later.
+            _logger.LogCritical(ex, "Outbox Service: CRITICAL - Kafka send (Success: {KafkaSuccess}) finished but DB update FAILED for message {Id}. " +
+                                   "Message remains Pending to be handled by safety net. This prevents duplicates in Hangfire.", kafkaSuccess, outboxMessageId);
+        }
     }
 
     public async Task ProcessPendingMessagesAsync(CancellationToken cancellationToken = default)

@@ -4,6 +4,7 @@ using KafkaFlow.Middlewares.Serializer.Resolvers;
 using WebAppExam.Application.Orders.Events;
 using WebAppExam.Domain.Events;
 using Microsoft.Extensions.Logging;
+using WebAppExam.Application.OutboxMessages.DTOs;
 
 namespace WebAppExam.API.Common.Kafka;
 
@@ -15,7 +16,9 @@ public class MessageTypeResolver : IMessageTypeResolver
         { "OrderUpdatedEvent", typeof(OrderUpdatedEvent) },
         { "OrderCanceledEvent", typeof(OrderCanceledEvent) },
         { "OrderDeletedEvent", typeof(OrderDeletedEvent) },
-        { "OrderItemProcessedEvent", typeof(OrderItemProcessedEvent) }
+        { "OrderItemProcessedEvent", typeof(OrderItemProcessedEvent) },
+        { "OrderCreatedIntegrationEvent", typeof(OrderCreatedIntegrationEvent) },
+        { "OutboxPointer", typeof(OutboxPointer) }
     };
     private readonly ILogger<MessageTypeResolver> _logger;
 
@@ -71,6 +74,14 @@ public class MessageTypeResolver : IMessageTypeResolver
             else if (type == typeof(OrderItemProcessedEvent))
             {
                 aliasName = nameof(OrderItemProcessedEvent);
+            }
+            else if (type == typeof(OrderCreatedIntegrationEvent))
+            {
+                aliasName = nameof(OrderCreatedIntegrationEvent);
+            }
+            else if (type == typeof(OutboxPointer))
+            {
+                aliasName = nameof(OutboxPointer);
             }
 
             // 3. Đóng dấu tên ngắn vào Header

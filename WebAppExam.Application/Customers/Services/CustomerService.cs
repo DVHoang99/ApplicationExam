@@ -1,7 +1,6 @@
 
-using System.Reflection.Metadata.Ecma335;
+
 using FluentResults;
-using Microsoft.AspNetCore.Mvc.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Customers.DTOs;

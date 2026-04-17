@@ -16,6 +16,6 @@ public class DailyRevenueRepository : Repository<DailyRevenue>, IDailyRevenueRep
     }
     public async Task<DailyRevenue?> GetByKeyAsync(string id, CancellationToken cancellationToken = default)
     {
-        return await _dbSet.FirstOrDefaultAsync(x => x.Date == id, cancellationToken);
+        return await Query().FirstOrDefaultAsync(x => x.Date == id, cancellationToken);
     }
 }

@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using WebAppExam.Domain;
 using WebAppExam.Domain.Common;
 using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
 
@@ -18,14 +19,27 @@ public class Repository<T> : IRepository<T> where T : class
 
     public async Task<T?> GetByIdAsync(Ulid id, CancellationToken cancellationToken = default)
     {
-        return await _dbSet.FirstOrDefaultAsync(x =>
-            EF.Property<Ulid>(x, "Id") == id &&
-            EF.Property<DateTime?>(x, "DeletedAt") == null, cancellationToken);
+        var query = _dbSet.AsQueryable();
+
+        if (typeof(EntityBase).IsAssignableFrom(typeof(T)))
+        {
+            query = query.Where(x => EF.Property<DateTime?>(x, "DeletedAt") == null);
+        }
+
+        return await query.FirstOrDefaultAsync(x =>
+            EF.Property<Ulid>(x, "Id") == id, cancellationToken);
     }
 
     public async Task<List<T>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        return await _dbSet.Where(x => EF.Property<DateTime?>(x, "DeletedAt") == null)
+        var query = _dbSet.AsQueryable();
+
+        if (typeof(EntityBase).IsAssignableFrom(typeof(T)))
+        {
+            query = query.Where(x => EF.Property<DateTime?>(x, "DeletedAt") == null);
+        }
+
+        return await query
         .OrderByDescending(x => EF.Property<Ulid>(x, "Id"))
         .ToListAsync(cancellationToken);
     }
@@ -43,6 +57,10 @@ public class Repository<T> : IRepository<T> where T : class
     public async Task AddAsync(T entity, CancellationToken cancellationToken = default)
     {
         await _dbSet.AddAsync(entity, cancellationToken);
+    }
+    public async Task AddRangeAsync(List<T> entities, CancellationToken cancellationToken = default)
+    {
+        await _dbSet.AddRangeAsync(entities, cancellationToken);
     }
 
     public void Update(T entity)

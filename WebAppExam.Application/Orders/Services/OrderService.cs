@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Linq.Expressions;
 using FluentResults;
 using Microsoft.EntityFrameworkCore;
 using WebAppExam.Application.Common;
@@ -92,7 +93,10 @@ public class OrderService : IOrderService
         {
             await _orderRepository.AddAsync(newOrder, cancellationToken);
 
-            // 2. Create one outbox message for each item and enqueue immediate publication
+            var outboxMessages = new List<OutboxMessage>();
+            var jobActions = new List<Expression<Func<IOutboxService, Task>>>();
+
+            // 2. Create one outbox message for each item
             foreach (var item in groupedItems)
             {
                 var itemOutboxId = Ulid.NewUlid();
@@ -114,12 +118,32 @@ public class OrderService : IOrderService
                     kafkaKey
                 );
 
-                // Save to DB (Safety Net)
-                await _outboxMessageRepository.AddAsync(itemOutbox, cancellationToken);
-                
-                // Enqueue to Hangfire (Performance Optimization: Pass event directly)
-                // This fulfills: "just publish event dont get outbox, it just send messgae"
-                _jobService.Enqueue<IOutboxService>(s => s.PublishMessageAsync(itemOutboxId, kafkaKey, itemProcessedEvent, CancellationToken.None));
+                outboxMessages.Add(itemOutbox);
+                jobActions.Add(s => s.PublishMessageAsync(itemOutboxId, kafkaKey, itemProcessedEvent, CancellationToken.None));
+            }
+
+            // 3. Create Integration Event for Revenue Service
+            // var integrationEvent = new OrderCreatedIntegrationEvent(newOrder.Id, newOrder.TotalAmount, DateTime.UtcNow, 1);
+            // var integrationOutboxId = Ulid.NewUlid();
+            // var integrationKafkaKey = $"{Constants.KafkaPrefix.OrderCreatedPrefix}:{newOrder.Id}";
+
+            // var integrationOutbox = OutboxMessage.Init(
+            //     integrationOutboxId,
+            //     nameof(OrderCreatedIntegrationEvent),
+            //     JsonSerializer.Serialize(integrationEvent),
+            //     integrationKafkaKey
+            // );
+
+            // outboxMessages.Add(integrationOutbox);
+            // jobActions.Add(s => s.PublishMessageAsync(integrationOutboxId, integrationKafkaKey, integrationEvent, CancellationToken.None));
+
+            // Save to DB (Safety Net - Batch)
+            await _outboxMessageRepository.AddRangeAsync(outboxMessages, cancellationToken);
+
+            // Enqueue to Hangfire (Performance Optimization: Pass event directly)
+            foreach (var job in jobActions)
+            {
+                _jobService.Enqueue(job);
             }
 
             return Result.Ok(newOrder.Id);
@@ -228,7 +252,7 @@ public class OrderService : IOrderService
 
         var allProductIds = groupedItems.Select(x => x.ProductId)
             .Union(order.Details.Select(x => x.ProductId)).ToList();
-        
+
         var products = await _productRepository.GetProductByIdsQuery(allProductIds)
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
@@ -327,8 +351,20 @@ public class OrderService : IOrderService
 
             await _outboxMessageRepository.AddAsync(outboxMessage, cancellationToken);
 
+            var integrationEvent = new OrderCreatedIntegrationEvent(order.Id, order.TotalAmount - oldTotalAmount, DateTime.UtcNow, 0);
+            var integrationOutboxId = Ulid.NewUlid();
+            var integrationKafkaKey = $"{Constants.KafkaPrefix.OrderUpdatePrefix}:{order.Id}:integration";
+
+            var integrationOutbox = OutboxMessage.Init(
+                integrationOutboxId,
+                nameof(OrderCreatedIntegrationEvent),
+                JsonSerializer.Serialize(integrationEvent),
+                integrationKafkaKey
+            );
+            await _outboxMessageRepository.AddAsync(integrationOutbox, cancellationToken);
+
             order.AddDomainEvent(orderUpdateEvent);
-            order.AddDomainEvent(new OrderCreatedIntegrationEvent(order.Id, order.TotalAmount - oldTotalAmount, DateTime.UtcNow, 0));
+            order.AddDomainEvent(integrationEvent);
 
             if (itemsToRelease.Any())
             {
@@ -384,7 +420,19 @@ public class OrderService : IOrderService
 
         order.AddDomainEvent(orderDeletedEvent);
 
-        order.AddDomainEvent(new OrderCreatedIntegrationEvent(order.Id, -order.TotalAmount, DateTime.UtcNow, -1));
+        var integrationEvent = new OrderCreatedIntegrationEvent(order.Id, -order.TotalAmount, DateTime.UtcNow, -1);
+        var integrationOutboxId = Ulid.NewUlid();
+        var integrationKafkaKey = $"{Constants.KafkaPrefix.OrderDeletedPrefix}:{order.Id}:integration";
+
+        var integrationOutbox = OutboxMessage.Init(
+            integrationOutboxId,
+            nameof(OrderCreatedIntegrationEvent),
+            JsonSerializer.Serialize(integrationEvent),
+            integrationKafkaKey
+        );
+        await _outboxMessageRepository.AddAsync(integrationOutbox, cancellationToken);
+
+        order.AddDomainEvent(integrationEvent);
 
         var itemsToRelease = order.Details.Select(x => new OrderItemDTO(x.ProductId, x.Quantity, x.WareHouseId.ToString())).ToList();
 
@@ -436,7 +484,19 @@ public class OrderService : IOrderService
 
         order.AddDomainEvent(orderCanceledEvent);
 
-        order.AddDomainEvent(new OrderCreatedIntegrationEvent(order.Id, -order.TotalAmount, DateTime.UtcNow, -1));
+        var integrationEvent = new OrderCreatedIntegrationEvent(order.Id, -order.TotalAmount, DateTime.UtcNow, -1);
+        var integrationOutboxId = Ulid.NewUlid();
+        var integrationKafkaKey = $"{Constants.KafkaPrefix.OrderCanceledPrefix}:{order.Id}:integration";
+
+        var integrationOutbox = OutboxMessage.Init(
+            integrationOutboxId,
+            nameof(OrderCreatedIntegrationEvent),
+            JsonSerializer.Serialize(integrationEvent),
+            integrationKafkaKey
+        );
+        await _outboxMessageRepository.AddAsync(integrationOutbox, cancellationToken);
+
+        order.AddDomainEvent(integrationEvent);
 
         var itemsToRelease = order.Details.Select(x => new OrderItemDTO(x.ProductId, x.Quantity, x.WareHouseId.ToString())).ToList();
 
