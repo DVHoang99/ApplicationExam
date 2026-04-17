@@ -9,8 +9,8 @@ public class OrderReplyDTO
     public Ulid OrderId { get; init; }
     public OrderStatus Status { get; init; }
     public string Reason { get; init; }
-    public string Action {get; init;}
+    public string Action { get; init; }
     public string IdenpotencyId { get; init; }
-    public List<OrderDetailDTO> Data { get; init; }
+    public OrderDetailDTO Data { get; init; }
 
 }

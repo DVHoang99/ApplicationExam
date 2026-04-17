@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 using WebAppExam.Application.Common;
 using WebAppExam.Application.Common.Caching;
@@ -53,7 +54,11 @@ public class InventoryReservationService : IInventoryReservationService
             var missingProductIds = missingItems.Select(x => x.ProductId).ToList();
             var missingWarehouseIds = missingItems.Select(x => x.WareHouseId.ToString()).ToList();
 
-            var products = await _productRepository.GetProductByIdsAndWareHouseIdsAsync(missingProductIds, missingWarehouseIds);
+            var productQuery = _productRepository.GetProductByIdsAndWareHouseIdsQuery(missingProductIds, missingWarehouseIds);
+
+            var products = await productQuery.ToDictionaryAsync(x => x.Id, x => new { x.Id, x.WareHouseId }, CancellationToken.None);
+
+            //var products = await _productRepository.ToDictionaryAsync(productQuery, x => x.Id);
 
             var productIds = products.Values.Select(x => x.Id.ToString()).ToList();
 

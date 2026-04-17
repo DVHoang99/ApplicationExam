@@ -139,10 +139,12 @@ public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
     }
     private void RollbackOrder(OrderReplyDTO messageDto, Domain.Order order)
     {
-        foreach (var item in messageDto.Data)
-        {
-            order.RollBackItem(item.ProductId, item.Price, item.Quantity, Ulid.Parse(item.WareHouseId));
-        }
+        // foreach (var item in messageDto.Data)
+        // {
+        //     order.RollBackItem(item.ProductId, item.Price, item.Quantity, Ulid.Parse(item.WareHouseId));
+        // }
+
+        order.RollBackItem(messageDto.Data.ProductId, messageDto.Data.Price, messageDto.Data.Quantity, Ulid.Parse(messageDto.Data.WareHouseId));
     }
     private async Task Canceled(OrderReplyDTO messageDto, IOrderRepository repository, IUnitOfWork uow, IDailyRevenueRepository dailyRevenueRepository)
     {

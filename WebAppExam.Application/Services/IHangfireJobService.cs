@@ -19,6 +19,11 @@ public interface IHangfireJobService
     string Enqueue(Expression<Func<Task>> methodCall);
 
     /// <summary>
+    /// Enqueue an async background job (Generic)
+    /// </summary>
+    string Enqueue<T>(Expression<Func<T, Task>> methodCall);
+
+    /// <summary>
     /// Schedule a job to run at a specific time
     /// </summary>
     string Schedule(Expression<Action> methodCall, TimeSpan delay);
@@ -27,6 +32,11 @@ public interface IHangfireJobService
     /// Schedule an async job to run at a specific time
     /// </summary>
     string Schedule(Expression<Func<Task>> methodCall, TimeSpan delay);
+
+    /// <summary>
+    /// Schedule an async job to run at a specific time (Generic)
+    /// </summary>
+    string Schedule<T>(Expression<Func<T, Task>> methodCall, TimeSpan delay);
 
     /// <summary>
     /// Schedule a recurring job (Cron expression)

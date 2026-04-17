@@ -14,6 +14,8 @@ public class OutboxMessage
     public string? Error { get; set; }
     public OutboxMessageStatus Status { get; set; }
     public string MessageId { get; set; }
+    public int RetryCount { get; set; } = 0;
+    public bool IsPermanentFailure { get; set; } = false;
 
     private OutboxMessage(Ulid id, string type, string content, DateTime createdAt, OutboxMessageStatus status, string messageId)
     {
@@ -43,5 +45,15 @@ public class OutboxMessage
         ProcessedOn = DateTime.UtcNow;
         Error = error;
     }
-}
 
+    public void MarkAsFailed(string error, bool isPermanent = false)
+    {
+        Status = OutboxMessageStatus.Pending; // Or a specific Failed status if available
+        Error = error;
+        IsPermanentFailure = isPermanent;
+        if (!isPermanent)
+        {
+            RetryCount++;
+        }
+    }
+}
