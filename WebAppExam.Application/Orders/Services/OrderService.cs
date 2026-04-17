@@ -14,6 +14,7 @@ using WebAppExam.Domain.Entity;
 using WebAppExam.Domain.Enum;
 using WebAppExam.Domain.Events;
 using WebAppExam.Domain.Repository;
+using WebAppExam.Application.Orders.Commands;
 
 namespace WebAppExam.Application.Orders.Services;
 
@@ -113,7 +114,7 @@ public class OrderService : IOrderService
 
                 var itemOutbox = OutboxMessage.Init(
                     itemOutboxId,
-                    nameof(OrderItemProcessedEvent),
+                    nameof(CreateOrderCommand),
                     JsonSerializer.Serialize(itemProcessedEvent),
                     kafkaKey
                 );
@@ -333,38 +334,78 @@ public class OrderService : IOrderService
                 _dailyRepository.Update(dailyRevenue);
             }
 
-            var itemUpdatedEvent = itemUpdated.Select(x => OrderItemEvent.Init(x.ProductId.ToString(), x.Quantity, x.WareHouseId.ToString())).ToList();
+            var outboxMessages = new List<OutboxMessage>();
+            var jobActions = new List<Expression<Func<IOutboxService, Task>>>();
 
-            var outboxMessageId = Ulid.NewUlid();
+            // 2. Create one outbox message for each item (Updated or Added)
+            foreach (var item in groupedItems)
+            {
+                var existingItem = order.Details.FirstOrDefault(x => x.ProductId == item.ProductId && x.WareHouseId.ToString() == item.WareHouseId);
+                var existingQty = existingItem?.Quantity ?? 0;
+                var delta = item.Quantity - existingQty;
 
-            // Attach Events
-            var orderUpdateEvent = OrderUpdatedEvent.Init(order.Id.ToString(), order.CustomerName, itemUpdatedEvent, outboxMessageId.ToString(), previousStatus);
+                if (delta == 0) continue;
 
-            var contentMessage = JsonSerializer.Serialize(orderUpdateEvent);
+                var itemOutboxId = Ulid.NewUlid();
+                var itemProcessedEvent = OrderItemProcessedEvent.Create(
+                    order.Id.ToString(),
+                    order.CustomerName,
+                    item.ProductId.ToString(),
+                    delta, // Send Delta (positive for more deduction, negative for partial revert)
+                    item.WareHouseId.ToString(),
+                    itemOutboxId.ToString()
+                );
 
-            var outboxMessage = OutboxMessage.Init(
-                outboxMessageId,
-                nameof(OrderUpdatedEvent),
-                contentMessage,
-                $"{Constants.KafkaPrefix.OrderUpdatePrefix}:{orderUpdateEvent.OrderId}"
-            );
+                var kafkaKey = $"{Constants.KafkaPrefix.OrderUpdatePrefix}:{order.Id}:{item.ProductId}";
 
-            await _outboxMessageRepository.AddAsync(outboxMessage, cancellationToken);
+                var itemOutbox = OutboxMessage.Init(
+                    itemOutboxId,
+                    nameof(UpdateOrderCommand),
+                    JsonSerializer.Serialize(itemProcessedEvent),
+                    kafkaKey
+                );
 
-            var integrationEvent = new OrderCreatedIntegrationEvent(order.Id, order.TotalAmount - oldTotalAmount, DateTime.UtcNow, 0);
-            var integrationOutboxId = Ulid.NewUlid();
-            var integrationKafkaKey = $"{Constants.KafkaPrefix.OrderUpdatePrefix}:{order.Id}:integration";
+                outboxMessages.Add(itemOutbox);
+                jobActions.Add(s => s.PublishMessageAsync(itemOutboxId, kafkaKey, itemProcessedEvent, CancellationToken.None));
+            }
 
-            var integrationOutbox = OutboxMessage.Init(
-                integrationOutboxId,
-                nameof(OrderCreatedIntegrationEvent),
-                JsonSerializer.Serialize(integrationEvent),
-                integrationKafkaKey
-            );
-            await _outboxMessageRepository.AddAsync(integrationOutbox, cancellationToken);
+            // 3. Create one outbox message for each deleted item
+            foreach (var del in itemsToDelete)
+            {
+                var itemOutboxId = Ulid.NewUlid();
+                var itemProcessedEvent = OrderItemProcessedEvent.Create(
+                    order.Id.ToString(),
+                    order.CustomerName,
+                    del.ProductId.ToString(),
+                    -del.Quantity, // 0 signifies deletion/full revert
+                    del.WareHouseId.ToString(),
+                    itemOutboxId.ToString()
+                );
 
-            order.AddDomainEvent(orderUpdateEvent);
-            order.AddDomainEvent(integrationEvent);
+                var kafkaKey = $"{Constants.KafkaPrefix.OrderUpdatePrefix}:{order.Id}:{del.ProductId}";
+
+                var itemOutbox = OutboxMessage.Init(
+                    itemOutboxId,
+                    nameof(UpdateOrderCommand),
+                    JsonSerializer.Serialize(itemProcessedEvent),
+                    kafkaKey
+                );
+
+                outboxMessages.Add(itemOutbox);
+                jobActions.Add(s => s.PublishMessageAsync(itemOutboxId, kafkaKey, itemProcessedEvent, CancellationToken.None));
+            }
+
+            // Save to DB (Safety Net - Batch)
+            await _outboxMessageRepository.AddRangeAsync(outboxMessages, cancellationToken);
+
+            // Enqueue to Hangfire (Performance Optimization: Pass event directly)
+            foreach (var job in jobActions)
+            {
+                _jobService.Enqueue(job);
+            }
+
+            //order.AddDomainEvent(orderUpdateEvent);
+            //order.AddDomainEvent(integrationEvent);
 
             if (itemsToRelease.Any())
             {
@@ -401,38 +442,42 @@ public class OrderService : IOrderService
 
         _orderRepository.Update(order);
 
-        var itemDeletedEvent = order.Details.Select(x => OrderItemEvent.Init(x.ProductId.ToString(), -x.Quantity, x.WareHouseId.ToString())).ToList();
+        var outboxMessages = new List<OutboxMessage>();
+        var jobActions = new List<Expression<Func<IOutboxService, Task>>>();
 
-        var outboxMessageId = Ulid.NewUlid();
+        foreach (var detail in order.Details)
+        {
+            var itemOutboxId = Ulid.NewUlid();
+            var itemProcessedEvent = OrderItemProcessedEvent.Create(
+                order.Id.ToString(),
+                order.CustomerName,
+                detail.ProductId.ToString(),
+                -detail.Quantity,
+                detail.WareHouseId.ToString(),
+                itemOutboxId.ToString()
+            );
 
-        var orderDeletedEvent = OrderDeletedEvent.Init(order.Id.ToString(), itemDeletedEvent, outboxMessageId.ToString());
+            var kafkaKey = $"{Constants.KafkaPrefix.OrderDeletedPrefix}:{order.Id}:{detail.ProductId}";
 
-        var contentMessage = JsonSerializer.Serialize(orderDeletedEvent);
+            var itemOutbox = OutboxMessage.Init(
+                itemOutboxId,
+                nameof(DeleteOrderCommand),
+                JsonSerializer.Serialize(itemProcessedEvent),
+                kafkaKey
+            );
 
-        var outboxMessage = OutboxMessage.Init(
-            outboxMessageId,
-            nameof(OrderDeletedEvent),
-            contentMessage,
-            $"{Constants.KafkaPrefix.OrderDeletedPrefix}:{orderDeletedEvent.OrderId}"
-        );
+            outboxMessages.Add(itemOutbox);
+            jobActions.Add(s => s.PublishMessageAsync(itemOutboxId, kafkaKey, itemProcessedEvent, CancellationToken.None));
+        }
 
-        await _outboxMessageRepository.AddAsync(outboxMessage, cancellationToken);
+        await _outboxMessageRepository.AddRangeAsync(outboxMessages, cancellationToken);
+        foreach (var job in jobActions)
+        {
+            _jobService.Enqueue(job);
+        }
 
-        order.AddDomainEvent(orderDeletedEvent);
-
-        var integrationEvent = new OrderCreatedIntegrationEvent(order.Id, -order.TotalAmount, DateTime.UtcNow, -1);
-        var integrationOutboxId = Ulid.NewUlid();
-        var integrationKafkaKey = $"{Constants.KafkaPrefix.OrderDeletedPrefix}:{order.Id}:integration";
-
-        var integrationOutbox = OutboxMessage.Init(
-            integrationOutboxId,
-            nameof(OrderCreatedIntegrationEvent),
-            JsonSerializer.Serialize(integrationEvent),
-            integrationKafkaKey
-        );
-        await _outboxMessageRepository.AddAsync(integrationOutbox, cancellationToken);
-
-        order.AddDomainEvent(integrationEvent);
+        //order.AddDomainEvent(orderDeletedEvent);
+        //order.AddDomainEvent(integrationEvent);
 
         var itemsToRelease = order.Details.Select(x => new OrderItemDTO(x.ProductId, x.Quantity, x.WareHouseId.ToString())).ToList();
 
@@ -463,40 +508,42 @@ public class OrderService : IOrderService
         order.UpdateOrderStatus(OrderStatus.Updating, "Updating...");
         _orderRepository.Update(order);
 
-        var outboxMessageId = Ulid.NewUlid();
+        var outboxMessages = new List<OutboxMessage>();
+        var jobActions = new List<Expression<Func<IOutboxService, Task>>>();
 
-        var orderCanceledEvent = OrderCanceledEvent.Init
-        (order.Id.ToString(),
-        statusPrevious,
-        order.Details.Select(o => OrderItemEvent.Init(o.ProductId.ToString(), -o.Quantity, o.WareHouseId.ToString())).ToList(),
-        outboxMessageId.ToString());
+        foreach (var detail in order.Details)
+        {
+            var itemOutboxId = Ulid.NewUlid();
+            var itemProcessedEvent = OrderItemProcessedEvent.Create(
+                order.Id.ToString(),
+                order.CustomerName,
+                detail.ProductId.ToString(),
+                -detail.Quantity, // Negative value signifies cancellation/revert
+                detail.WareHouseId.ToString(),
+                itemOutboxId.ToString()
+            );
 
-        var contentMessage = JsonSerializer.Serialize(orderCanceledEvent);
+            var kafkaKey = $"{Constants.KafkaPrefix.OrderCanceledPrefix}:{order.Id}:{detail.ProductId}";
 
-        var outboxMessage = OutboxMessage.Init(
-            outboxMessageId,
-            nameof(OrderCanceledEvent),
-            contentMessage,
-            $"{Constants.KafkaPrefix.OrderCanceledPrefix}:{orderCanceledEvent.OrderId}"
-        );
+            var itemOutbox = OutboxMessage.Init(
+                itemOutboxId,
+                nameof(CancelOrderCommand),
+                JsonSerializer.Serialize(itemProcessedEvent),
+                kafkaKey
+            );
 
-        await _outboxMessageRepository.AddAsync(outboxMessage, cancellationToken);
+            outboxMessages.Add(itemOutbox);
+            jobActions.Add(s => s.PublishMessageAsync(itemOutboxId, kafkaKey, itemProcessedEvent, CancellationToken.None));
+        }
 
-        order.AddDomainEvent(orderCanceledEvent);
+        await _outboxMessageRepository.AddRangeAsync(outboxMessages, cancellationToken);
+        foreach (var job in jobActions)
+        {
+            _jobService.Enqueue(job);
+        }
 
-        var integrationEvent = new OrderCreatedIntegrationEvent(order.Id, -order.TotalAmount, DateTime.UtcNow, -1);
-        var integrationOutboxId = Ulid.NewUlid();
-        var integrationKafkaKey = $"{Constants.KafkaPrefix.OrderCanceledPrefix}:{order.Id}:integration";
-
-        var integrationOutbox = OutboxMessage.Init(
-            integrationOutboxId,
-            nameof(OrderCreatedIntegrationEvent),
-            JsonSerializer.Serialize(integrationEvent),
-            integrationKafkaKey
-        );
-        await _outboxMessageRepository.AddAsync(integrationOutbox, cancellationToken);
-
-        order.AddDomainEvent(integrationEvent);
+        //order.AddDomainEvent(orderCanceledEvent);
+        //order.AddDomainEvent(integrationEvent);
 
         var itemsToRelease = order.Details.Select(x => new OrderItemDTO(x.ProductId, x.Quantity, x.WareHouseId.ToString())).ToList();
 
