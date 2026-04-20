@@ -1,8 +1,7 @@
-using System;
-using WebAppExam.Application.Products.Services;
 using WebAppExam.Application.Services;
 using WebAppExam.Domain.Repository;
 using Microsoft.Extensions.Logging;
+using WebAppExam.Application.Products.Services;
 
 namespace WebAppExam.Infrastructure.Services;
 
@@ -23,7 +22,8 @@ public class InventoryReconciliationJob : IInventoryReconciliationJob
 
     public async Task ReconcilePendingProductsAsync()
     {
-        var pendingProducts = await _productRepository.GetProductsNotSync();
+        var productQuery = _productRepository.GetProductsNotSync();
+        var pendingProducts = await _productRepository.ToListAsync(productQuery);
 
         if (!pendingProducts.Any()) return;
 

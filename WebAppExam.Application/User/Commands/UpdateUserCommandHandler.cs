@@ -2,6 +2,7 @@ using FluentResults;
 using MediatR;
 using WebAppExam.Application.Common.Errors;
 using WebAppExam.Application.Common.Helpers;
+using WebAppExam.Domain.Exceptions;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.User.Commands;
@@ -22,7 +23,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, Resul
         var user = await _userRepository.GetByUsernameAsync(request.Username, cancellationToken);
         if (user == null)
         {
-            return Result.Fail(new NotFoundError("User", request.Username));
+            throw new NotFoundException($"User {request.Username} not found.");
         }
 
         user.UpdateUser(PasswordHelper.HashPassword(request.Password), request.Name, request.Role);

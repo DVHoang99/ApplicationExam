@@ -7,8 +7,9 @@ using WebAppExam.Domain.Common;
 using WebAppExam.Domain.Entity;
 using WebAppExam.Domain.Enum;
 using WebAppExam.Domain.Events;
-using WebAppExam.Domain.Repository;
 using WebAppExam.Infrastructure.Exceptions;
+using WebAppExam.Application.OutboxMessages.DTOs;
+using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Orders.EventHandlers
 {
@@ -42,17 +43,15 @@ namespace WebAppExam.Application.Orders.EventHandlers
                 return;
             }
 
-            var jsonFromDb = outboxMessage.Content;
-
-            var orderEvent = JsonSerializer.Deserialize<OrderDeletedEvent>(jsonFromDb);
-
             try
             {
                 var producer = _producerAccessor.GetProducer(Constants.KafkaProducer.OrderProducer);
 
+                var pointer = new OutboxPointer(outboxMessage.Id.ToString(), nameof(OrderDeletedEvent));
+
                 await producer.ProduceAsync(
                     $"{Constants.KafkaPrefix.OrderDeletedPrefix}:{message.OrderId}",
-                    orderEvent
+                    pointer
                 );
 
                 outboxMessage.UpdateStatus(OutboxMessageStatus.Sent, string.Empty);

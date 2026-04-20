@@ -6,14 +6,16 @@ namespace WebAppExam.Domain.Entity;
 
 public class OutboxMessage
 {
-    public Ulid Id { get; set; }
-    public string Type { get; set; }
-    public string Content { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? ProcessedOn { get; set; }
-    public string? Error { get; set; }
-    public OutboxMessageStatus Status { get; set; }
-    public string MessageId { get; set; }
+    public Ulid Id { get; }
+    public string Type { get; private set; }
+    public string Content { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+    public DateTime? ProcessedOn { get; private set; }
+    public string? Error { get; private set; }
+    public OutboxMessageStatus Status { get; private set; }
+    public string MessageId { get; private set; }
+    public int RetryCount { get; private set; } = 0;
+    public bool IsPermanentFailure { get; private set; }
 
     private OutboxMessage(Ulid id, string type, string content, DateTime createdAt, OutboxMessageStatus status, string messageId)
     {
@@ -43,5 +45,15 @@ public class OutboxMessage
         ProcessedOn = DateTime.UtcNow;
         Error = error;
     }
-}
 
+    public void MarkAsFailed(string error, bool isPermanent = false)
+    {
+        Status = OutboxMessageStatus.Pending; // Or a specific Failed status if available
+        Error = error;
+        IsPermanentFailure = isPermanent;
+        if (!isPermanent)
+        {
+            RetryCount++;
+        }
+    }
+}

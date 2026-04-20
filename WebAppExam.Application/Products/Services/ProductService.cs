@@ -5,7 +5,9 @@ using WebAppExam.Application.Products.DTOs;
 using WebAppExam.Application.Services;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Common;
+using WebAppExam.Domain.Exceptions;
 using WebAppExam.Domain.Repository;
+using WebAppExam.Domain.Entity;
 
 namespace WebAppExam.Application.Products.Services;
 
@@ -45,7 +47,7 @@ public class ProductService : IProductService
 
         if (wareHouse == null)
         {
-            return Result.Fail("WareHouse not found.");
+            throw new NotFoundException("WareHouse not found.");
         }
 
         await _productRepository.AddAsync(product, cancellationToken);
@@ -141,7 +143,7 @@ public class ProductService : IProductService
 
         if (productDto == null)
         {
-            return Result.Fail("Product not found.");
+            throw new NotFoundException("Product not found.");
         }
 
         return Result.Ok(productDto);
@@ -153,7 +155,7 @@ public class ProductService : IProductService
 
         if (product == null)
         {
-            return Result.Fail("Product not found.");
+            throw new NotFoundException("Product not found.");
         }
 
         product.UpdateInformation(name, description, price);
@@ -177,7 +179,7 @@ public class ProductService : IProductService
 
         if (product == null)
         {
-            return Result.Fail("Product not found.");
+            throw new NotFoundException("Product not found.");
         }
 
         product.DeleteProduct();

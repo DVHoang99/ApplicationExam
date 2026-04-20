@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.DataProtection.KeyManagement.Internal;
 using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Common.Errors;
 using WebAppExam.Application.Customers.Services;
+using WebAppExam.Domain.Exceptions;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Customers.Commands;
@@ -29,7 +30,7 @@ public class DeleteCustomerCommandHandler : IRequestHandler<DeleteCustomerComman
 
         if (customer == null)
         {
-            return Result.Fail(new NotFoundError("Customer", request.Id.ToString()));
+            throw new NotFoundException($"Customer {request.Id} not found.");
         }
 
         customer.DeletedAt = DateTime.UtcNow;

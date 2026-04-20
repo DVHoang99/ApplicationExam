@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 
 namespace WebAppExam.Domain.Common
 {
@@ -17,6 +17,7 @@ namespace WebAppExam.Domain.Common
             CancellationToken cancellationToken = default);
 
         Task AddAsync(T entity, CancellationToken cancellationToken = default);
+        Task AddRangeAsync(List<T> entities, CancellationToken cancellationToken = default);
 
         void Update(T entity);
         void UpdateRange(List<T> entities);
@@ -24,5 +25,7 @@ namespace WebAppExam.Domain.Common
         void Remove(T entity);
 
         IQueryable<T> Query();
+        Task<List<T>> ToListAsync(IQueryable<T> query, CancellationToken cancellationToken = default);
+        IQueryable<T> FromSqlInterpolated(FormattableString sql);
     }
 }
