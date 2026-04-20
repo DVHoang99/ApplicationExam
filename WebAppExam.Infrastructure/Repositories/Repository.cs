@@ -87,4 +87,9 @@ public class Repository<T> : IRepository<T> where T : class
     {
         return await query.ToListAsync(cancellationToken);
     }
+
+    public IQueryable<T> FromSqlInterpolated(FormattableString sql)
+    {
+        return _dbSet.FromSqlInterpolated(sql);
+    }
 }

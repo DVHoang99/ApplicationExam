@@ -26,5 +26,6 @@ namespace WebAppExam.Domain.Common
 
         IQueryable<T> Query();
         Task<List<T>> ToListAsync(IQueryable<T> query, CancellationToken cancellationToken = default);
+        IQueryable<T> FromSqlInterpolated(FormattableString sql);
     }
 }

@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 using WebAppExam.Application.Common;
 using WebAppExam.Application.Common.Caching;
-using WebAppExam.Application.Common.Enums; // Required for RedisDbType
+using WebAppExam.Application.Common.Enums;
 using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Application.Products.DTOs;
 using WebAppExam.Application.Products.Services;
@@ -12,7 +12,6 @@ namespace WebAppExam.Infrastructure.Services;
 
 public class InventoryReservationService : IInventoryReservationService
 {
-    // Replaced IConnectionMultiplexer with ICacheService
     private readonly ICacheService _cacheService;
     private readonly IProductRepository _productRepository;
     private readonly IInventoryService _inventoryService;
@@ -85,6 +84,15 @@ public class InventoryReservationService : IInventoryReservationService
 
         var values = itemsToReserve.Select(x => (RedisValue)x.Quantity).ToArray();
 
+        // Lua Script to ensure atomicity: Check stock and deduct in one go
+        // Lua script explanation:
+        // 1. Loop through all keys (stock entries) and check if current stock is enough for the requested quantity. If any item fails, return its index (1-based).
+        // 2. If all items have enough stock, loop again to deduct the requested quantity from each stock entry.
+        // 3. Return 0 to indicate success.
+
+        // Note: Using Lua script ensures that we won't have race conditions where stock might change between the check and the deduction.
+        // also, lua using single thread excution in redis.
+        
         var luaScript = @"
             -- 1: Scan dry-run to check if all items have enough stock
             for i = 1, #KEYS do
@@ -116,7 +124,7 @@ public class InventoryReservationService : IInventoryReservationService
         var failedIndex = statusCode - 1;
         var failedItem = itemsToReserve[failedIndex];
         var failures = new List<string> { $"Product {failedItem.ProductId} at {failedItem.WareHouseId} not enough." };
-        throw new WebAppExam.Domain.Exceptions.ValidationException(failures);
+        throw new Domain.Exceptions.ValidationException(failures);
     }
 
     public async Task ReleaseStocksAsync(List<OrderItemDTO> itemsToRelease)

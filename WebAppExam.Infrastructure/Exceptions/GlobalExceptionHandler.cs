@@ -57,10 +57,16 @@ public class GlobalExceptionHandler : IExceptionHandler
                 badRequestEx.Message,
                 null),
 
+            ForbiddenException forbiddenEx => (
+                StatusCodes.Status403Forbidden,
+                "Forbidden",
+                forbiddenEx.Message,
+                null),
+
             UnauthorizedAccessException => (
-                StatusCodes.Status401Unauthorized,
-                "Unauthorized",
-                "You are not authorized to access this resource.",
+                StatusCodes.Status403Forbidden,
+                "Forbidden",
+                "You do not have permission to access this resource.",
                 null),
 
             TransientOperationException transEx => (
@@ -88,29 +94,16 @@ public class GlobalExceptionHandler : IExceptionHandler
         // 4. Return JSON Response to Client
         httpContext.Response.StatusCode = statusCode;
         
-        // Extract flat error list for compatibility with ErrorResult format
-        var flatErrors = new List<string>();
-        if (errors is IDictionary<string, string[]> dict)
-        {
-            flatErrors = dict.SelectMany(x => x.Value).ToList();
-        }
-        else if (errors is IEnumerable<string> list)
-        {
-            flatErrors = list.ToList();
-        }
-        else
-        {
-            flatErrors.Add(detail ?? "An error occurred");
-        }
+        // Standardize error dictionary
+        var errorResponse = errors as IDictionary<string, string[]> 
+            ?? new Dictionary<string, string[]> { { "General", new[] { detail ?? title } } };
 
-        var isValidation = errors is IDictionary<string, string[]>;
         var response = new
         {
             Status = statusCode,
             Title = title,
             Detail = detail,
-            Errors = isValidation ? new List<string>() : flatErrors, 
-            ValidationErrors = isValidation ? errors : null,
+            Errors = errorResponse, // Consolidate into a single consistent dictionary
             TraceId = traceId
         };
 
@@ -143,16 +136,7 @@ public class GlobalExceptionHandler : IExceptionHandler
     private async Task LogErrorAsync(HttpContext context, Exception exception, string traceId, int statusCode, string detail, object? errors)
     {
         var level = statusCode >= 500 ? "Fatal" : "Warning";
-        var logContext = new
-        {
-            TraceId = traceId,
-            Method = context.Request.Method,
-            Path = context.Request.Path,
-            StatusCode = statusCode,
-            Detail = detail,
-            ValidationErrors = errors
-        };
-
+        
         _logger.Log(
             statusCode >= 500 ? LogLevel.Error : LogLevel.Warning,
             exception,
@@ -162,6 +146,11 @@ public class GlobalExceptionHandler : IExceptionHandler
         try
         {
             var logProducer = _producerAccessor.GetProducer("system-logs-producer");
+            if (logProducer == null) 
+            {
+                 _logger.LogWarning("Kafka producer 'system-logs-producer' not found. Skipping Kafka logging.");
+                 return;
+            }
             
             var logMessage = LogMessageDTO.FromResult(
                 level,
