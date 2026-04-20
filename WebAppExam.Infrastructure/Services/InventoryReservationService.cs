@@ -31,7 +31,7 @@ public class InventoryReservationService : IInventoryReservationService
         _db = _cacheService.GetDatabase(RedisDbType.Cache);
     }
 
-    public async Task<bool> ReserveStocksAsync(Ulid customerId, List<OrderItemDTO> itemsToReserve)
+    public async Task<bool> ReserveStocksAsync(List<OrderItemDTO> itemsToReserve)
     {
 
         var keys = itemsToReserve
@@ -115,10 +115,8 @@ public class InventoryReservationService : IInventoryReservationService
 
         var failedIndex = statusCode - 1;
         var failedItem = itemsToReserve[failedIndex];
-
-        throw new FluentValidation.ValidationException(new[] {
-            new FluentValidation.Results.ValidationFailure("Inventory", $"Product {failedItem.ProductId} at {failedItem.WareHouseId} not enough.")
-        });
+        var failures = new List<string> { $"Product {failedItem.ProductId} at {failedItem.WareHouseId} not enough." };
+        throw new WebAppExam.Domain.Exceptions.ValidationException(failures);
     }
 
     public async Task ReleaseStocksAsync(List<OrderItemDTO> itemsToRelease)

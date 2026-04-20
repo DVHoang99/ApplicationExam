@@ -6,6 +6,7 @@ using WebAppExam.Application.Common.Caching;
 using WebAppExam.Application.Customers.DTOs;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Common;
+using WebAppExam.Domain.Exceptions;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Customers.Services;
@@ -31,7 +32,7 @@ public class CustomerService : ICustomerService
 
         if (customerByEmail != null)
         {
-            return Result.Fail("Customer already exists");
+            throw new BadRequestException("Customer already exists");
         }
 
         var customer = Customer.Create(customerName, email, phone);
@@ -79,7 +80,7 @@ public class CustomerService : ICustomerService
 
         if (customer == null)
         {
-            return Result.Fail("Customer not found");
+            throw new NotFoundException("Customer not found");
         }
 
         return Result.Ok(customer);
@@ -91,7 +92,7 @@ public class CustomerService : ICustomerService
 
         if (customer == null)
         {
-            return Result.Fail("Customer not found");
+            throw new NotFoundException("Customer not found");
         }
         customer.Update(customerName, email, phone);
 
@@ -107,7 +108,7 @@ public class CustomerService : ICustomerService
 
         if (customer == null)
         {
-            return Result.Fail("Customer not found");
+            throw new NotFoundException("Customer not found");
         }
 
         customer.Delete();

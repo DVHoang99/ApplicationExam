@@ -63,14 +63,7 @@ public class OrderRepository : Repository<Order>, IOrderRepository
             AppDbContext.FUnaccent($"%{searchTerm}%")
         ));
     }
-
-    public async Task<IEnumerable<Order>> ToListAsync(IQueryable<Order> query, CancellationToken cancellationToken = default)
-    {
-        return await query
-            .Include(o => o.Details)
-            .Where(o => o.DeletedAt == null)
-            .ToListAsync(cancellationToken);
-    }
+    
     public async Task<Order?> GetOrderByIdAndStatusAsync(Ulid orderId, OrderStatus status, CancellationToken cancellationToken)
     {
         return await Query()

@@ -51,12 +51,7 @@ public class OutboxGrpcService : OutboxGrpc.OutboxGrpcBase
             throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid Outbox ID format"));
         }
 
-        var message = await _outboxMessageRepository.GetByIdAsync(outboxId, context.CancellationToken);
-
-        if (message == null)
-        {
-            throw new RpcException(new Status(StatusCode.NotFound, $"Outbox message with ID {request.Id} not found"));
-        }
+        var message = await _outboxMessageRepository.GetByIdAsync(outboxId, context.CancellationToken) ?? throw new RpcException(new Status(StatusCode.NotFound, $"Outbox message with ID {request.Id} not found"));
 
         var status = (OutboxMessageStatus)request.Status;
         message.UpdateStatus(status, request.Error);

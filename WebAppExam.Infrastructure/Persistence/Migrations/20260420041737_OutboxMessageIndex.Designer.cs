@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
@@ -11,9 +12,11 @@ using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
 namespace WebAppExam.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260420041737_OutboxMessageIndex")]
+    partial class OutboxMessageIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -138,8 +141,14 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("idx_outbox_messages_created_at");
+
                     b.HasIndex("MessageId")
                         .HasDatabaseName("idx_outbox_messages_message_id");
+
+                    b.HasIndex("IsPermanentFailure", "Status")
+                        .HasDatabaseName("idx_outbox_messages_permanent_failure_status");
 
                     b.HasIndex("Status", "CreatedAt")
                         .HasDatabaseName("idx_outbox_messages_status_created_at");

@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using WebAppExam.Application.Auth.DTOs;
 using WebAppExam.Application.Common.Errors;
 using WebAppExam.Application.Common.Helpers;
+using WebAppExam.Domain.Exceptions;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.Auth.Services;
@@ -59,14 +60,14 @@ public class AuthService : IAuthService
         var principal = GetPrincipalFromExpiredToken(token);
         if (principal == null)
         {
-            return Result.Fail("Invalid access token or refresh token");
+            throw new BadRequestException("Invalid access token or refresh token");
         }
 
         string? username = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (string.IsNullOrWhiteSpace(username))
         {
-            return Result.Fail("Invalid access token or refresh token");
+            throw new BadRequestException("Invalid access token or refresh token");
         }
 
         // Find user and validate the refresh token
@@ -74,7 +75,7 @@ public class AuthService : IAuthService
 
         if (user == null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
         {
-            return Result.Fail("Invalid access token or refresh token");
+            throw new BadRequestException("Invalid access token or refresh token");
         }
 
         var newAccessToken = GenerateJwtToken(user.Username, user.Role);
@@ -117,8 +118,7 @@ public class AuthService : IAuthService
 
         if (user == null || !PasswordHelper.VerifyPassword(password, user.PasswordHash))
         {
-            
-            return Result.Fail(UnauthorizedError.Unauthorized("Invalid username or password"));
+            throw new BadRequestException("Invalid username or password");
         }
 
         var token = GenerateJwtToken(user.Username, user.Role);
@@ -137,7 +137,7 @@ public class AuthService : IAuthService
 
         if (user == null)
         {
-            return Result.Fail("User not found");
+            throw new NotFoundException("User not found");
         }
 
         user.UpdateRefeshToken(string.Empty, DateTime.MinValue);

@@ -55,20 +55,14 @@ namespace WebAppExam.Infrastructure.Persistence.Configurations
                 .IsRequired()
                 .HasDefaultValue(false);
 
-            builder.HasIndex(x => x.Status)
-                .HasDatabaseName("idx_outbox_messages_status");
-
-            builder.HasIndex(x => x.CreatedAt)
-                .HasDatabaseName("idx_outbox_messages_created_at");
-
             builder.HasIndex(x => new { x.Status, x.CreatedAt })
                 .HasDatabaseName("idx_outbox_messages_status_created_at");
 
             builder.HasIndex(x => x.MessageId)
                 .HasDatabaseName("idx_outbox_messages_message_id");
-
-            builder.HasIndex(x => new { x.IsPermanentFailure, x.Status })
-                .HasDatabaseName("idx_outbox_messages_permanent_failure_status");
+            
+            builder.HasIndex(x => new { x.Type, x.Status, x.IsPermanentFailure })
+              .HasDatabaseName("IX_OutboxMessage_Type_Status_IsPermanentFailure");
         }
     }
 }

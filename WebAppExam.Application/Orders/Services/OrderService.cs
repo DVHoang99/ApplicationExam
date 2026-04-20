@@ -12,7 +12,7 @@ using WebAppExam.Domain;
 using WebAppExam.Domain.Common;
 using WebAppExam.Domain.Entity;
 using WebAppExam.Domain.Enum;
-using WebAppExam.Domain.Events;
+using WebAppExam.Domain.Exceptions;
 using WebAppExam.Domain.Repository;
 using WebAppExam.Application.Orders.Commands;
 
@@ -54,14 +54,14 @@ public class OrderService : IOrderService
     {
         if (items == null || items.Count == 0)
         {
-            return Result.Fail("Cart is empty, cannot create order!");
+            throw new BadRequestException("Items is empty, cannot create order!");
         }
 
         var customerExists = await _customerRepository.GetByIdAsync(customerId, cancellationToken);
 
         if (customerExists == null)
         {
-            return Result.Fail("Customer not found.");
+            throw new NotFoundException("Customer not found.");
         }
 
         var groupedItems = items
@@ -71,8 +71,8 @@ public class OrderService : IOrderService
             .ToList();
 
         var products = await _productRepository.GetProductByIdsAndWareHouseIdsQuery(
-            groupedItems.Select(x => x.ProductId).ToList(),
-            groupedItems.Select(x => x.WareHouseId).ToList())
+            [.. groupedItems.Select(x => x.ProductId)],
+            [.. groupedItems.Select(x => x.WareHouseId)])
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
         // 1. Create Order
@@ -82,20 +82,19 @@ public class OrderService : IOrderService
         {
             if (!products.TryGetValue(item.ProductId, out var product))
             {
-                return Result.Fail($"ProductId {item.ProductId} not found.");
+                throw new NotFoundException($"ProductId {item.ProductId} not found.");
             }
 
             newOrder.AddOrUpdateItem(item.ProductId, product.Price, item.Quantity, Ulid.Parse(item.WareHouseId));
         }
 
-        await _inventoryReservationService.ReserveStocksAsync(customerId, groupedItems);
+        await _inventoryReservationService.ReserveStocksAsync(groupedItems);
 
         try
         {
             await _orderRepository.AddAsync(newOrder, cancellationToken);
 
             var outboxMessages = new List<OutboxMessage>();
-            var jobActions = new List<Expression<Func<IOutboxService, Task>>>();
 
             // 2. Create one outbox message for each item
             foreach (var item in groupedItems)
@@ -110,33 +109,17 @@ public class OrderService : IOrderService
                     itemOutboxId.ToString()
                 );
 
-                var kafkaKey = $"{Constants.KafkaPrefix.OrderCreatedPrefix}:{newOrder.Id}:{item.ProductId}";
-
                 var itemOutbox = OutboxMessage.Init(
                     itemOutboxId,
-                    nameof(CreateOrderCommand),
+                    OutboxMessageType.OrderCreated.Description(),
                     JsonSerializer.Serialize(itemProcessedEvent),
-                    kafkaKey
+                    newOrder.Id.ToString()
                 );
 
                 outboxMessages.Add(itemOutbox);
-                jobActions.Add(s => s.PublishMessageAsync(itemOutboxId, kafkaKey, itemProcessedEvent, CancellationToken.None));
             }
 
-            // 3. Create Integration Event for Revenue Service
-            // var integrationEvent = new OrderCreatedIntegrationEvent(newOrder.Id, newOrder.TotalAmount, DateTime.UtcNow, 1);
-            // var integrationOutboxId = Ulid.NewUlid();
-            // var integrationKafkaKey = $"{Constants.KafkaPrefix.OrderCreatedPrefix}:{newOrder.Id}";
-
-            // var integrationOutbox = OutboxMessage.Init(
-            //     integrationOutboxId,
-            //     nameof(OrderCreatedIntegrationEvent),
-            //     JsonSerializer.Serialize(integrationEvent),
-            //     integrationKafkaKey
-            // );
-
-            // outboxMessages.Add(integrationOutbox);
-            // jobActions.Add(s => s.PublishMessageAsync(integrationOutboxId, integrationKafkaKey, integrationEvent, CancellationToken.None));
+            var jobActions = CreateOutboxMessageJobs(outboxMessages, newOrder.Id.ToString(), cancellationToken);
 
             // Save to DB (Safety Net - Batch)
             await _outboxMessageRepository.AddRangeAsync(outboxMessages, cancellationToken);
@@ -152,7 +135,7 @@ public class OrderService : IOrderService
         catch (Exception ex)
         {
             await _inventoryReservationService.ReleaseStocksAsync(groupedItems);
-            return Result.Fail($"Error saving order. Inventory has been reverted: {ex}");
+            throw new BadRequestException($"Error saving order. Inventory has been reverted: {ex.Message}");
         }
     }
 
@@ -194,7 +177,8 @@ public class OrderService : IOrderService
             order.Address,
             order.CustomerName,
             order.PhoneNumber,
-            order.CreatedAt, order.Details.ToList()))
+            order.CreatedAt,
+            [.. order.Details]))
             .ToList();
     }
 
@@ -219,13 +203,13 @@ public class OrderService : IOrderService
                 order.CustomerName,
                 order.PhoneNumber,
                 order.CreatedAt,
-                order.Details.ToList());
+                [.. order.Details]);
             return res;
         }, Constants.CacheDuration.OrderDetail, cancellationToken);
 
         if (orderDTO == null)
         {
-            return Result.Fail("Order not found.");
+            throw new NotFoundException("Order not found.");
         }
 
         return Result.Ok(orderDTO);
@@ -242,7 +226,7 @@ public class OrderService : IOrderService
         var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
         if (order == null)
         {
-            return Result.Fail("Order not found.");
+            throw new NotFoundException("Order not found.");
         }
 
         var groupedItems = items
@@ -254,7 +238,9 @@ public class OrderService : IOrderService
         var allProductIds = groupedItems.Select(x => x.ProductId)
             .Union(order.Details.Select(x => x.ProductId)).ToList();
 
-        var products = await _productRepository.GetProductByIdsQuery(allProductIds)
+        var products = await _productRepository
+            .GetProductByIdsQuery(allProductIds)
+            .AsNoTracking()
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
         var itemsToReserve = new List<OrderItemDTO>();
@@ -275,7 +261,7 @@ public class OrderService : IOrderService
         {
             if (!products.TryGetValue(req.ProductId, out var product))
             {
-                return Result.Fail($"ProductId {req.ProductId} not found.");
+                throw new NotFoundException($"ProductId {req.ProductId} not found.");
             }
 
             var existingItem = order.Details.FirstOrDefault(x => x.ProductId == req.ProductId && x.WareHouseId.ToString() == req.WareHouseId);
@@ -295,13 +281,18 @@ public class OrderService : IOrderService
             }
         }
 
-        if (itemsToReserve.Any())
-        {
-            await _inventoryReservationService.ReserveStocksAsync(customerId, itemsToReserve);
-        }
-
         try
         {
+            if (itemsToReserve.Any())
+            {
+                await _inventoryReservationService.ReserveStocksAsync(itemsToReserve);
+            }
+
+            if (itemsToRelease.Any())
+            {
+                await _inventoryReservationService.ReleaseStocksAsync(itemsToRelease);
+            }
+
             var oldTotalAmount = order.TotalAmount;
             order.UpdateOrderGeneralInformation(customerId, customerName, address, phoneNumber);
 
@@ -322,8 +313,6 @@ public class OrderService : IOrderService
 
             var previousStatus = order.Status;
 
-            order.UpdateOrderStatus(OrderStatus.Updating, "Updating...");
-
             _orderRepository.Update(order);
 
             var key = order.CreatedAt.Date.ToString("yyyy-MM-dd");
@@ -335,65 +324,31 @@ public class OrderService : IOrderService
             }
 
             var outboxMessages = new List<OutboxMessage>();
-            var jobActions = new List<Expression<Func<IOutboxService, Task>>>();
 
             // 2. Create one outbox message for each item (Updated or Added)
-            foreach (var item in groupedItems)
+            foreach (var item in itemUpdated)
             {
-                var existingItem = order.Details.FirstOrDefault(x => x.ProductId == item.ProductId && x.WareHouseId.ToString() == item.WareHouseId);
-                var existingQty = existingItem?.Quantity ?? 0;
-                var delta = item.Quantity - existingQty;
-
-                if (delta == 0) continue;
-
                 var itemOutboxId = Ulid.NewUlid();
                 var itemProcessedEvent = OrderItemProcessedEvent.Create(
                     order.Id.ToString(),
                     order.CustomerName,
                     item.ProductId.ToString(),
-                    delta, // Send Delta (positive for more deduction, negative for partial revert)
+                    item.Quantity,
                     item.WareHouseId.ToString(),
                     itemOutboxId.ToString()
                 );
 
-                var kafkaKey = $"{Constants.KafkaPrefix.OrderUpdatePrefix}:{order.Id}:{item.ProductId}";
-
                 var itemOutbox = OutboxMessage.Init(
                     itemOutboxId,
-                    nameof(UpdateOrderCommand),
+                    OutboxMessageType.OrderUpdated.Description(),
                     JsonSerializer.Serialize(itemProcessedEvent),
-                    kafkaKey
+                    order.Id.ToString()
                 );
 
                 outboxMessages.Add(itemOutbox);
-                jobActions.Add(s => s.PublishMessageAsync(itemOutboxId, kafkaKey, itemProcessedEvent, CancellationToken.None));
             }
 
-            // 3. Create one outbox message for each deleted item
-            foreach (var del in itemsToDelete)
-            {
-                var itemOutboxId = Ulid.NewUlid();
-                var itemProcessedEvent = OrderItemProcessedEvent.Create(
-                    order.Id.ToString(),
-                    order.CustomerName,
-                    del.ProductId.ToString(),
-                    -del.Quantity, // 0 signifies deletion/full revert
-                    del.WareHouseId.ToString(),
-                    itemOutboxId.ToString()
-                );
-
-                var kafkaKey = $"{Constants.KafkaPrefix.OrderUpdatePrefix}:{order.Id}:{del.ProductId}";
-
-                var itemOutbox = OutboxMessage.Init(
-                    itemOutboxId,
-                    nameof(UpdateOrderCommand),
-                    JsonSerializer.Serialize(itemProcessedEvent),
-                    kafkaKey
-                );
-
-                outboxMessages.Add(itemOutbox);
-                jobActions.Add(s => s.PublishMessageAsync(itemOutboxId, kafkaKey, itemProcessedEvent, CancellationToken.None));
-            }
+            var jobActions = CreateOutboxMessageJobs(outboxMessages, order.Id.ToString(), cancellationToken);
 
             // Save to DB (Safety Net - Batch)
             await _outboxMessageRepository.AddRangeAsync(outboxMessages, cancellationToken);
@@ -402,14 +357,6 @@ public class OrderService : IOrderService
             foreach (var job in jobActions)
             {
                 _jobService.Enqueue(job);
-            }
-
-            //order.AddDomainEvent(orderUpdateEvent);
-            //order.AddDomainEvent(integrationEvent);
-
-            if (itemsToRelease.Any())
-            {
-                await _inventoryReservationService.ReleaseStocksAsync(itemsToRelease);
             }
 
             var cacheKey = $"{Constants.CachePrefix.OrderDetailPrefix}:{id}";
@@ -425,7 +372,12 @@ public class OrderService : IOrderService
                 await _inventoryReservationService.ReleaseStocksAsync(itemsToReserve);
             }
 
-            return Result.Fail($"Error updating order. Reserved inventory has been successfully refunded: {ex.Message}");
+            if (itemsToRelease.Any())
+            {
+                await _inventoryReservationService.ReserveStocksAsync(itemsToRelease);
+            }
+
+            throw new BadRequestException($"Error updating order. Reserved inventory has been successfully refunded: {ex.Message}");
         }
     }
 
@@ -435,7 +387,7 @@ public class OrderService : IOrderService
 
         if (order == null)
         {
-            return Result.Fail("Order not found.");
+            throw new NotFoundException("Order not found.");
         }
 
         order.DeleteOrder();
@@ -443,7 +395,6 @@ public class OrderService : IOrderService
         _orderRepository.Update(order);
 
         var outboxMessages = new List<OutboxMessage>();
-        var jobActions = new List<Expression<Func<IOutboxService, Task>>>();
 
         foreach (var detail in order.Details)
         {
@@ -457,27 +408,23 @@ public class OrderService : IOrderService
                 itemOutboxId.ToString()
             );
 
-            var kafkaKey = $"{Constants.KafkaPrefix.OrderDeletedPrefix}:{order.Id}:{detail.ProductId}";
-
             var itemOutbox = OutboxMessage.Init(
                 itemOutboxId,
-                nameof(DeleteOrderCommand),
+                OutboxMessageType.OrderDeleted.Description(),
                 JsonSerializer.Serialize(itemProcessedEvent),
-                kafkaKey
+                order.Id.ToString()
             );
 
             outboxMessages.Add(itemOutbox);
-            jobActions.Add(s => s.PublishMessageAsync(itemOutboxId, kafkaKey, itemProcessedEvent, CancellationToken.None));
         }
+
+        var jobActions = CreateOutboxMessageJobs(outboxMessages, order.Id.ToString(), cancellationToken);
 
         await _outboxMessageRepository.AddRangeAsync(outboxMessages, cancellationToken);
         foreach (var job in jobActions)
         {
             _jobService.Enqueue(job);
         }
-
-        //order.AddDomainEvent(orderDeletedEvent);
-        //order.AddDomainEvent(integrationEvent);
 
         var itemsToRelease = order.Details.Select(x => new OrderItemDTO(x.ProductId, x.Quantity, x.WareHouseId.ToString())).ToList();
 
@@ -500,7 +447,7 @@ public class OrderService : IOrderService
 
         if (order == null || order.Status == OrderStatus.Canceled)
         {
-            return Result.Fail("Order not found.");
+            throw new NotFoundException("Order not found.");
         }
 
         var statusPrevious = order.Status;
@@ -509,7 +456,6 @@ public class OrderService : IOrderService
         _orderRepository.Update(order);
 
         var outboxMessages = new List<OutboxMessage>();
-        var jobActions = new List<Expression<Func<IOutboxService, Task>>>();
 
         foreach (var detail in order.Details)
         {
@@ -523,27 +469,23 @@ public class OrderService : IOrderService
                 itemOutboxId.ToString()
             );
 
-            var kafkaKey = $"{Constants.KafkaPrefix.OrderCanceledPrefix}:{order.Id}:{detail.ProductId}";
-
             var itemOutbox = OutboxMessage.Init(
                 itemOutboxId,
-                nameof(CancelOrderCommand),
+                OutboxMessageType.OrderCancelled.Description(),
                 JsonSerializer.Serialize(itemProcessedEvent),
-                kafkaKey
+                 order.Id.ToString()
             );
 
             outboxMessages.Add(itemOutbox);
-            jobActions.Add(s => s.PublishMessageAsync(itemOutboxId, kafkaKey, itemProcessedEvent, CancellationToken.None));
         }
+
+        var jobActions = CreateOutboxMessageJobs(outboxMessages, order.Id.ToString(), cancellationToken);
 
         await _outboxMessageRepository.AddRangeAsync(outboxMessages, cancellationToken);
         foreach (var job in jobActions)
         {
             _jobService.Enqueue(job);
         }
-
-        //order.AddDomainEvent(orderCanceledEvent);
-        //order.AddDomainEvent(integrationEvent);
 
         var itemsToRelease = order.Details.Select(x => new OrderItemDTO(x.ProductId, x.Quantity, x.WareHouseId.ToString())).ToList();
 
@@ -553,5 +495,22 @@ public class OrderService : IOrderService
         }
 
         return order.Id;
+    }
+
+    private List<Expression<Func<IOutboxService, Task>>> CreateOutboxMessageJobs(List<OutboxMessage> outboxMessages, string orderId, CancellationToken cancellationToken)
+    {
+        var jobActions = new List<Expression<Func<IOutboxService, Task>>>();
+
+        foreach (var outbox in outboxMessages)
+        {
+            var itemProcessedEvent = JsonSerializer.Deserialize<OrderItemProcessedEvent>(outbox.Content);
+
+            if (itemProcessedEvent != null)
+            {
+                jobActions.Add(s => s.PublishMessageAsync(outbox.Id, orderId, itemProcessedEvent, CancellationToken.None));
+            }
+        }
+
+        return jobActions;
     }
 }

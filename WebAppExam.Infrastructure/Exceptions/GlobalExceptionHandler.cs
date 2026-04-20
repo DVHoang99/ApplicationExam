@@ -1,5 +1,3 @@
-using System;
-using System.Net;
 using KafkaFlow.Producers;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
@@ -7,8 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using WebAppExam.Application.Logger.DTOs;
-using System.Collections.Generic;
-using System.Linq;
 using WebAppExam.Domain.Exceptions;
 
 namespace WebAppExam.Infrastructure.Exceptions;
