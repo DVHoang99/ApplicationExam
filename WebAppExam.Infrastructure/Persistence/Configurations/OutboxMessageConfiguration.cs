@@ -26,6 +26,7 @@ namespace WebAppExam.Infrastructure.Persistence.Configurations
 
             builder.Property(x => x.Content)
                 .IsRequired()
+                .HasMaxLength(1000)
                 .HasColumnType("text");
 
             builder.Property(x => x.CreatedAt)

@@ -101,7 +101,9 @@ public class OrderService : IOrderService
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = _orderRepository.Query();
+        var query = _orderRepository.Query()
+        .Where(x => x.DeletedAt == null)
+        .AsNoTracking();
 
         if (fromDate != null && toDate != null)
         {
@@ -140,7 +142,11 @@ public class OrderService : IOrderService
         var key = $"{Constants.CachePrefix.OrderDetailPrefix}:{id}";
         var orderDTO = await _cacheService.GetAsync<OrderDTO?>(key, async () =>
         {
-            var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
+            var order = await _orderRepository.Query()
+                .Include(o => o.Details)
+                .Where(o => o.Id == id && o.DeletedAt == null)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(cancellationToken);
 
             if (order == null)
             {

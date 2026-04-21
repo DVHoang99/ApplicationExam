@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using KafkaFlow.Producers;
 using Microsoft.Extensions.Logging;
 using WebAppExam.Application.Orders.Events;
@@ -81,51 +76,58 @@ public class OutboxService : IOutboxService
     /// </summary>
     public async Task PublishMessageAsync(Ulid outboxMessageId, string kafkaKey, object message, CancellationToken cancellationToken = default)
     {
-        // CLAIM CHECK PATTERN: For Order events, we send an OutboxPointer instead of the full payload.
-        object messageToSend = message;
-        bool isOrderEvent = message is OrderItemProcessedEvent || 
-                            message is OrderUpdatedEvent || 
-                            message is OrderDeletedEvent || 
-                            message is OrderCanceledEvent || 
-                            message is OrderCreatedIntegrationEvent;
-
-        if (isOrderEvent)
+        object messageToSend = message switch
         {
-            messageToSend = new OutboxPointer(outboxMessageId.ToString(), message.GetType().Name);
-        }
+            OrderItemProcessedEvent or
+            OrderUpdatedEvent or
+            OrderDeletedEvent or
+            OrderCanceledEvent or
+            OrderCreatedIntegrationEvent => new OutboxPointer(outboxMessageId.ToString(), message.GetType().Name),
+
+            _ => message
+        };
 
         bool kafkaSuccess = false;
         string kafkaError = string.Empty;
+        const int maxRetries = 3;
 
-        // 1. KAFKA RETRY LOOP (Manual loop to separate from DB errors)
-        int maxRetries = 3;
+        // KAFKA RETRY LOOP
         for (int retryCount = 1; retryCount <= maxRetries; retryCount++)
         {
             try
             {
                 var producer = _producerAccessor.GetProducer(Constants.KafkaProducer.OrderProducer);
-                await producer.ProduceAsync(kafkaKey, messageToSend);
+
+                await producer.ProduceAsync(kafkaKey, messageToSend, cancellationToken);
+
                 kafkaSuccess = true;
                 break;
             }
             catch (Exception ex)
             {
                 kafkaError = ex.Message;
-                bool isPermanent = ex is PermanentOutboxException || ex is JsonException || ex is ArgumentException;
+
+                bool isPermanent = ex is PermanentOutboxException or JsonException or ArgumentException;
 
                 if (isPermanent || retryCount == maxRetries)
                 {
-                    _logger.LogError(ex, "Outbox Service: Kafka failed {Type} for message {Id} after {Attempt} attempts.", 
+                    _logger.LogError(ex, "Outbox Service: Kafka failed {Type} for message {Id} after {Attempt} attempts.",
                         isPermanent ? "PERMANENTLY" : "FINAL", outboxMessageId, retryCount);
                     break;
                 }
 
                 _logger.LogWarning(ex, "Outbox Service: Kafka attempt {Attempt} failed for message {Id}. Retrying...", retryCount, outboxMessageId);
-                await Task.Delay(1000 * retryCount, cancellationToken);
+
+                await Task.Delay(TimeSpan.FromSeconds(retryCount), cancellationToken);
             }
         }
 
-        // 2. DATABASE UPDATE (Isolated - No Rethrow to stop Hangfire retry)
+        // DATABASE UPDATE
+        await UpdateOutboxMessageStatusAsync(outboxMessageId, kafkaSuccess, kafkaError, cancellationToken);
+    }
+
+    private async Task UpdateOutboxMessageStatusAsync(Ulid outboxMessageId, bool kafkaSuccess, string kafkaError, CancellationToken cancellationToken = default)
+    {
         try
         {
             if (kafkaSuccess)
@@ -137,11 +139,11 @@ public class OutboxService : IOutboxService
             {
                 // Kafka failed after all retries or permanent error
                 await _outboxMessageRepository.UpdateStatusAsync(
-                    outboxMessageId, 
-                    OutboxMessageStatus.Failed, 
-                    $"Kafka Error: {kafkaError}", 
+                    outboxMessageId,
+                    OutboxMessageStatus.Failed,
+                    $"Kafka Error: {kafkaError}",
                     isPermanentFailure: true);
-                
+
                 _logger.LogCritical("Outbox Service: Message {Id} marked as FAILED in DB after Kafka failures.", outboxMessageId);
             }
         }
@@ -159,8 +161,8 @@ public class OutboxService : IOutboxService
     {
         // The safety net periodic job
         var query = _outboxMessageRepository.Query()
-            .Where(m => m.Status == OutboxMessageStatus.Pending && 
-                        !m.IsPermanentFailure && 
+            .Where(m => m.Status == OutboxMessageStatus.Pending &&
+                        !m.IsPermanentFailure &&
                         m.RetryCount < 5)
             .OrderBy(m => m.CreatedAt)
             .Take(50);
@@ -181,7 +183,7 @@ public class OutboxService : IOutboxService
                 {
                     // For the polling job, we ENQUEUE the job so that the 
                     // OutboxJobFilter (Handler) handles the status update consistently.
-                    _jobService.Enqueue<IOutboxService>(s => 
+                    _jobService.Enqueue<IOutboxService>(s =>
                         s.PublishMessageAsync(outboxMessage.Id, outboxMessage.MessageId, messageData, CancellationToken.None));
                 }
             }
