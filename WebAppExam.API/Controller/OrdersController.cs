@@ -1,6 +1,5 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using WebAppExam.Application.Common.Errors;
 using WebAppExam.Application.Orders.Commands;
 using WebAppExam.Application.Orders.DTOs;
 using WebAppExam.Application.Orders.Queries;
@@ -23,12 +22,7 @@ public class OrdersController : ControllerBase
     {
         var command = CreateOrderCommand.Init(input);
         var result = await _mediator.Send(command);
-        if (result.IsSuccess)
-        {
-            return Ok(result.Value);
-        }
-
-        return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+        return Ok(result.Value);
     }
 
     [HttpGet]
@@ -43,12 +37,7 @@ public class OrdersController : ControllerBase
     {
         var query = GetAllOrdersQuery.Init(fromDate, toDate, customerName, phoneNumber, pageNumber, pageSize);
         var result = await _mediator.Send(query);
-        if (result.IsSuccess)
-        {
-            return Ok(result.Value);
-        }
-
-        return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+        return Ok(result.Value);
     }
 
     [HttpGet("{id}")]
@@ -56,26 +45,15 @@ public class OrdersController : ControllerBase
     {
         var query = GetOrderByIdQuery.Init(id);
         var result = await _mediator.Send(query);
-        if (result.IsSuccess)
-        {
-            return Ok(result.Value);
-        }
-
-        return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+        return Ok(result.Value);
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Ulid id, [FromBody] OrderDTO input)
     {
         var command = UpdateOrderCommand.Init(id, input);
-
         var result = await _mediator.Send(command);
-        if (result.IsSuccess)
-        {
-            return Ok(result.Value);
-        }
-
-        return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+        return Ok(result.Value);
     }
 
     [HttpDelete("{id}")]
@@ -83,12 +61,7 @@ public class OrdersController : ControllerBase
     {
         var command = DeleteOrderCommand.Init(id);
         var result = await _mediator.Send(command);
-        if (result.IsSuccess)
-        {
-            return Ok(result.Value);
-        }
-
-        return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+        return Ok(result.Value);
     }
 
     [HttpPost("{id}/canceled")]
@@ -96,11 +69,6 @@ public class OrdersController : ControllerBase
     {
         var command = CancelOrderCommand.Init(id);
         var result = await _mediator.Send(command);
-        if (result.IsSuccess)
-        {
-            return Ok(result.Value);
-        }
-
-        return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+        return Ok(result.Value);
     }
 }

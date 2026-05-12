@@ -35,11 +35,19 @@ public class HangfireJobService : IHangfireJobService, IJobService
     }
 
     /// <summary>
-    /// Enqueue an async background job to run immediately (IHangfireJobService)
+    /// Enqueue an async background job (IHangfireJobService)
     /// </summary>
     string IHangfireJobService.Enqueue(Expression<Func<Task>> methodCall)
     {
         return BackgroundJob.Enqueue(methodCall);
+    }
+
+    /// <summary>
+    /// Enqueue an async background job (Generic)
+    /// </summary>
+    public string Enqueue<T>(Expression<Func<T, Task>> methodCall)
+    {
+        return BackgroundJob.Enqueue<T>(methodCall);
     }
 
     /// <summary>
@@ -56,6 +64,14 @@ public class HangfireJobService : IHangfireJobService, IJobService
     public string Schedule(Expression<Func<Task>> methodCall, TimeSpan delay)
     {
         return BackgroundJob.Schedule(methodCall, delay);
+    }
+
+    /// <summary>
+    /// Schedule an async job to run after a specific delay (Generic)
+    /// </summary>
+    public string Schedule<T>(Expression<Func<T, Task>> methodCall, TimeSpan delay)
+    {
+        return BackgroundJob.Schedule<T>(methodCall, delay);
     }
 
     /// <summary>

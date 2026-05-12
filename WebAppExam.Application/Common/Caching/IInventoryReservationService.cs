@@ -5,6 +5,6 @@ namespace WebAppExam.Application.Common;
 
 public interface IInventoryReservationService
 {
-    Task<bool> ReserveStocksAsync(Ulid customerId, List<OrderItemDTO> itemsToReserve);
+    Task<bool> ReserveStocksAsync(List<OrderItemDTO> itemsToReserve);
     Task ReleaseStocksAsync(List<OrderItemDTO> itemsToRelease);
 }

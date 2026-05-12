@@ -14,6 +14,6 @@ public class UserRepository : Repository<User>, IUserRepository
 
     public async Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default)
     {
-        return await _dbSet.FirstOrDefaultAsync(x => x.Username == username && x.DeletedAt == null, cancellationToken);
+        return await Query().FirstOrDefaultAsync(x => x.Username == username && x.DeletedAt == null, cancellationToken);
     }
 }

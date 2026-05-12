@@ -1,9 +1,11 @@
-using System;
 using KafkaFlow.Producers;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using WebAppExam.Application.Logger.DTOs;
+using WebAppExam.Domain.Exceptions;
 
 namespace WebAppExam.Infrastructure.Exceptions;
 
@@ -17,40 +19,144 @@ public class GlobalExceptionHandler : IExceptionHandler
         _producerAccessor = producerAccessor;
         _logger = logger;
     }
+
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
         CancellationToken cancellationToken)
     {
-        if (exception is FluentValidation.ValidationException validationException)
+        // 1. Trace ID Correlation
+        var traceId = httpContext.TraceIdentifier;
+
+        // 2. Map Exception to Status and "Explanation"
+        var (statusCode, title, detail, errors) = exception switch
         {
-            httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            httpContext.Response.ContentType = "application/json";
+            ValidationException domainEx => (
+                StatusCodes.Status400BadRequest,
+                "Validation Error",
+                domainEx.Message,
+                domainEx.Errors),
 
-            var validationResponse = new
-            {
-                Status = 400,
-                Title = "Validation Error",
-                Errors = validationException.Errors
+            FluentValidation.ValidationException fluentEx => (
+                StatusCodes.Status400BadRequest,
+                "Validation Error",
+                "One or more validation failures have occurred.",
+                fluentEx.Errors
                     .GroupBy(x => x.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(x => x.ErrorMessage).ToArray())
-            };
+                    .ToDictionary(g => g.Key, g => g.Select(x => x.ErrorMessage).ToArray())),
 
-            await httpContext.Response.WriteAsJsonAsync(validationResponse, cancellationToken);
-            return true;
+            NotFoundException notFoundEx => (
+                StatusCodes.Status404NotFound,
+                "Not Found",
+                notFoundEx.Message,
+                null),
+
+            BadRequestException badRequestEx => (
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                badRequestEx.Message,
+                null),
+
+            ForbiddenException forbiddenEx => (
+                StatusCodes.Status403Forbidden,
+                "Forbidden",
+                forbiddenEx.Message,
+                null),
+
+            UnauthorizedAccessException => (
+                StatusCodes.Status403Forbidden,
+                "Forbidden",
+                "You do not have permission to access this resource.",
+                null),
+
+            TransientOperationException transEx => (
+                StatusCodes.Status400BadRequest,
+                "Operation Failed",
+                ExplainException(transEx),
+                null),
+
+            DbUpdateException dbEx => (
+                StatusCodes.Status409Conflict,
+                "Database Update Error",
+                ExplainException(dbEx),
+                null),
+
+            _ => (
+                StatusCodes.Status500InternalServerError,
+                "Internal Server Error",
+                "An unexpected error occurred. Please use the TraceId to report this issue.",
+                null)
+        };
+
+        // 3. Log the Error with Trace ID (to Kafka and Serilog)
+        await LogErrorAsync(httpContext, exception, traceId, statusCode, detail, errors);
+
+        // 4. Return JSON Response to Client
+        httpContext.Response.StatusCode = statusCode;
+        
+        // Standardize error dictionary
+        var errorResponse = errors as IDictionary<string, string[]> 
+            ?? new Dictionary<string, string[]> { { "General", new[] { detail ?? title } } };
+
+        var response = new
+        {
+            Status = statusCode,
+            Title = title,
+            Detail = detail,
+            Errors = errorResponse, // Consolidate into a single consistent dictionary
+            TraceId = traceId
+        };
+
+        await httpContext.Response.WriteAsJsonAsync(response, cancellationToken);
+
+        return true;
+    }
+
+    private string ExplainException(Exception exception)
+    {
+        // Recursively look for inner exceptions of interest (like PostgresException)
+        var current = exception;
+        while (current != null)
+        {
+            if (current is PostgresException pgEx)
+            {
+                return pgEx.SqlState switch
+                {
+                    "23505" => "This record already exists (unique constraint violation).",
+                    "23503" => "This operation violates a dependency constraint (foreign key violation).",
+                    _ => $"Database error: {pgEx.MessageText}"
+                };
+            }
+            current = current.InnerException;
         }
 
-        _logger.LogError(exception, "A completely unhandled exception occurred.");
+        return exception.Message;
+    }
+
+    private async Task LogErrorAsync(HttpContext context, Exception exception, string traceId, int statusCode, string detail, object? errors)
+    {
+        var level = statusCode >= 500 ? "Fatal" : "Warning";
+        
+        _logger.Log(
+            statusCode >= 500 ? LogLevel.Error : LogLevel.Warning,
+            exception,
+            "[{Level}] TraceId: {TraceId} | {Method} {Path} failed with Status {StatusCode}: {Detail} | ValidationErrors: {@ValidationErrors}",
+            level, traceId, context.Request.Method, context.Request.Path, statusCode, detail, errors);
 
         try
         {
             var logProducer = _producerAccessor.GetProducer("system-logs-producer");
+            if (logProducer == null) 
+            {
+                 _logger.LogWarning("Kafka producer 'system-logs-producer' not found. Skipping Kafka logging.");
+                 return;
+            }
             
             var logMessage = LogMessageDTO.FromResult(
-                "Fatal",
+                level,
                 "WebAppExam.Api",
-                $"[CRASH] {httpContext.Request.Method} {httpContext.Request.Path} failed: {exception.Message}",
-                exception.ToString()
+                $"[{level}] TraceId: {traceId} | {context.Request.Method} {context.Request.Path} failed: {detail}",
+                $"{exception}\n\nValidation Details: {System.Text.Json.JsonSerializer.Serialize(errors)}"
             );
 
             await logProducer.ProduceAsync(
@@ -61,21 +167,7 @@ public class GlobalExceptionHandler : IExceptionHandler
         }
         catch (Exception kafkaEx)
         {
-            _logger.LogCritical(kafkaEx, "Failed to send crash log to Kafka!");
+            _logger.LogCritical(kafkaEx, "Failed to send error log to Kafka for TraceId: {TraceId}", traceId);
         }
-
-        // Trả về JSON lỗi 500 cho Frontend thay vì văng nguyên trang HTML
-        httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
-        httpContext.Response.ContentType = "application/json";
-
-        var serverErrorResponse = new
-        {
-            Status = 500,
-            Title = "An unexpected server error occurred.",
-            Detail = exception.Message
-        };
-
-        await httpContext.Response.WriteAsJsonAsync(serverErrorResponse, cancellationToken);
-        return true;
     }
 }

@@ -1,17 +1,10 @@
-using System;
 using KafkaFlow;
 using Microsoft.Extensions.DependencyInjection;
 using WebAppExam.Application.Orders.DTOs;
-using WebAppExam.Domain;
 using WebAppExam.Domain.Repository;
 using Microsoft.Extensions.Logging;
 using WebAppExam.Application.Common;
-using WebAppExam.Domain.Entity;
-using WebAppExam.Application.Common.Caching;
 using StackExchange.Redis;
-using WebAppExam.Application.Common.Enums;
-using System.Text.Json;
-using WebAppExam.Infrastructure.Exceptions;
 
 namespace WebAppExam.Application.Orders.Consumers;
 
@@ -139,10 +132,7 @@ public class OrderReplyHandler : IMessageHandler<OrderReplyDTO>
     }
     private void RollbackOrder(OrderReplyDTO messageDto, Domain.Order order)
     {
-        foreach (var item in messageDto.Data)
-        {
-            order.RollBackItem(item.ProductId, item.Price, item.Quantity, Ulid.Parse(item.WareHouseId));
-        }
+        order.RollBackItem(messageDto.Data.ProductId, messageDto.Data.Price, messageDto.Data.Quantity, Ulid.Parse(messageDto.Data.WareHouseId));
     }
     private async Task Canceled(OrderReplyDTO messageDto, IOrderRepository repository, IUnitOfWork uow, IDailyRevenueRepository dailyRevenueRepository)
     {

@@ -1,6 +1,7 @@
 using FluentResults;
 using MediatR;
 using WebAppExam.Application.Common.Errors;
+using WebAppExam.Domain.Exceptions;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.User.Commands;
@@ -20,7 +21,7 @@ public class DeleteUserCommandHandler : IRequestHandler<DeleteUserCommand, Resul
 
         if (user == null)
         {
-            return Result.Fail(new NotFoundError("User", request.Username));
+            throw new NotFoundException($"User {request.Username} not found.");
         }
 
         user.DeleteUser();

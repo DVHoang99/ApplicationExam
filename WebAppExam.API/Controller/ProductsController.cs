@@ -1,7 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using WebAppExam.Application.Common.Errors;
 using WebAppExam.Application.Products.Commands;
 using WebAppExam.Application.Products.DTOs;
 using WebAppExam.Application.Products.Queries;
@@ -18,18 +17,13 @@ namespace WebAppExam.API.Controller
         {
             _mediator = mediator;
         }
+
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] ProductRequestDTO product)
         {
             var command = CreateProductCommand.Init(product.Name, product.Description, product.Price, product.WareHouseId, product.Stock);
-
             var result = await _mediator.Send(command);
-            if (result.IsSuccess)
-            {
-                return Ok(result.Value);
-            }
-
-            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+            return Ok(result.Value);
         }
 
         [HttpGet]
@@ -40,12 +34,7 @@ namespace WebAppExam.API.Controller
         {
             var query = GetAllProductQuery.Init(name, pageNumber, pageSize);
             var result = await _mediator.Send(query);
-            if (result.IsSuccess)
-            {
-                return Ok(result.Value);
-            }
-
-            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+            return Ok(result.Value);
         }
 
         [HttpGet("{id}")]
@@ -53,26 +42,15 @@ namespace WebAppExam.API.Controller
         {
             var query = GetProductByIdQuery.Init(id);
             var result = await _mediator.Send(query);
-            if (result.IsSuccess)
-            {
-                return Ok(result.Value);
-            }
-
-            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+            return Ok(result.Value);
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(Ulid id, [FromBody] ProductRequestDTO input)
         {
             var command = UpdateProductCommand.Init(id, input);
-
             var result = await _mediator.Send(command);
-            if (result.IsSuccess)
-            {
-                return Ok(result.Value);
-            }
-
-            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+            return Ok(result.Value);
         }
 
         [HttpDelete("{id}")]
@@ -80,14 +58,8 @@ namespace WebAppExam.API.Controller
         public async Task<IActionResult> Delete(Ulid id, [FromQuery] string wareHouseId)
         {
             var command = DeleteProductCommand.Init(id, wareHouseId);
-
             var result = await _mediator.Send(command);
-            if (result.IsSuccess)
-            {
-                return Ok(result.Value);
-            }
-
-            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+            return Ok(result.Value);
         }
     }
 }

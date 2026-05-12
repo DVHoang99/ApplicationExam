@@ -1,7 +1,7 @@
 using System;
 using FluentResults;
 using MediatR;
-using WebAppExam.Application.Customers.Command;
+using WebAppExam.Application.Customers.Commands;
 using WebAppExam.Application.Customers.Services;
 using WebAppExam.Domain;
 using WebAppExam.Domain.Repository;

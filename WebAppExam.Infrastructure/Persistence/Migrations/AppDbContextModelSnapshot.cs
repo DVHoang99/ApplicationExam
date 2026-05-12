@@ -110,6 +110,11 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsPermanentFailure")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("MessageId")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -117,6 +122,11 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime?>("ProcessedOn")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RetryCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -128,17 +138,14 @@ namespace WebAppExam.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAt")
-                        .HasDatabaseName("idx_outbox_messages_created_at");
-
                     b.HasIndex("MessageId")
                         .HasDatabaseName("idx_outbox_messages_message_id");
 
-                    b.HasIndex("Status")
-                        .HasDatabaseName("idx_outbox_messages_status");
-
                     b.HasIndex("Status", "CreatedAt")
                         .HasDatabaseName("idx_outbox_messages_status_created_at");
+
+                    b.HasIndex("Type", "Status", "IsPermanentFailure")
+                        .HasDatabaseName("IX_OutboxMessage_Type_Status_IsPermanentFailure");
 
                     b.ToTable("outbox_messages", (string)null);
                 });

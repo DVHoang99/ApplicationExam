@@ -13,6 +13,7 @@ using WebAppExam.Infrastructure.Jobs;
 using WebAppExam.Domain.Common;
 using WebAppExam.Application.Services;
 using Serilog;
+using WebAppExam.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,7 +29,22 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
-builder.Services.AddControllers();
+builder.Services.AddGrpc();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(e => e.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage).ToArray()
+                );
+
+            throw new WebAppExam.Domain.Exceptions.ValidationException(errors);
+        };
+    });
 
 // 3. Authentication & Authorization
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -50,7 +66,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization(options =>
 {
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
+        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+        .RequireAssertion(context =>
+        {
+            var httpContext = context.Resource as HttpContext;
+            if (httpContext == null) return false;
+
+            if (httpContext.User.Identity?.IsAuthenticated == true) return true;
+
+            if (httpContext.Request.Headers.TryGetValue(Constants.HttpHeader.InternalKeyHeader, out var extractedKey))
+            {
+                var secretKey = builder.Configuration[Constants.ConfigKeys.InternalApiKeyConfigPath];
+                return !string.IsNullOrEmpty(secretKey) && extractedKey == secretKey;
+            }
+
+            return false;
+        })
         .Build();
 });
 
@@ -74,6 +105,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapGrpcService<OutboxGrpcService>();
 
 // 6. Start Kafka
 var kafkaBus = app.Services.CreateKafkaBus();

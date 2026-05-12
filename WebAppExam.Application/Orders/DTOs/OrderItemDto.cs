@@ -11,4 +11,11 @@ public class OrderItemDTO
         
     }
 
+    public OrderItemDTO(Ulid productId, int quantity, string wareHouseId)
+    {
+        ProductId = productId;
+        Quantity = quantity;
+        WareHouseId = wareHouseId;
+    }
+
 }

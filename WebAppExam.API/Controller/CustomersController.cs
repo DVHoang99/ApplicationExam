@@ -1,8 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using WebAppExam.Application.Common.Errors;
-using WebAppExam.Application.Customers.Command;
 using WebAppExam.Application.Customers.Commands;
 using WebAppExam.Application.Customers.DTOs;
 using WebAppExam.Application.Customers.Queries;
@@ -25,13 +23,7 @@ namespace WebAppExam.API.Controller
         {
             var command = CreateCustomerCommand.Create(input.CustomerName, input.Email, input.Phone);
             var result = await _mediator.Send(command);
-
-            if (result.IsSuccess)
-            {
-                return Ok(result.Value);
-            }
-
-            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+            return Ok(result.Value);
         }
 
         [HttpGet]
@@ -44,12 +36,7 @@ namespace WebAppExam.API.Controller
         {
             var query = GetAllCustomerQuery.GetAll(phoneNumber, customerName, pageNumber, pageSize);
             var result = await _mediator.Send(query);
-            if (result.IsSuccess)
-            {
-                return Ok(result.Value);
-            }
-
-            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+            return Ok(result.Value);
         }
 
         [HttpGet("{id}")]
@@ -57,26 +44,15 @@ namespace WebAppExam.API.Controller
         {
             var query = GetCustomerByIdQuery.Init(id);
             var result = await _mediator.Send(query);
-            if (result.IsSuccess)
-            {
-                return Ok(result.Value);
-            }
-
-            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+            return Ok(result.Value);
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(Ulid id, [FromBody] CustomerDTO input)
         {
             var command = UpdateCustomerCommand.Init(id, input.CustomerName, input.Email, input.Phone);
-
             var result = await _mediator.Send(command);
-            if (result.IsSuccess)
-            {
-                return Ok(result.Value);
-            }
-
-            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+            return Ok(result.Value);
         }
 
         [HttpDelete("{id}")]
@@ -85,12 +61,7 @@ namespace WebAppExam.API.Controller
         {
             var command = DeleteCustomerCommand.Init(id);
             var result = await _mediator.Send(command);
-            if (result.IsSuccess)
-            {
-                return Ok(result.Value);
-            }
-
-            return BadRequest(ErrorResult.FromResult(result.Errors.Select(e => e.Message).ToList()));
+            return Ok(result.Value);
         }
     }
 }

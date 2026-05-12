@@ -1,6 +1,7 @@
 using System;
 using FluentResults;
 using WebAppExam.Application.Common.Helpers;
+using WebAppExam.Domain.Exceptions;
 using WebAppExam.Domain.Repository;
 
 namespace WebAppExam.Application.User.Services;
@@ -19,7 +20,7 @@ public class UserService : IUserService
 
         if (user != null)
         {
-            return Result.Fail("Username already exists");
+            throw new BadRequestException("Username already exists");
         }
         var newUser = Domain.Entity.User.Create(username, PasswordHelper.HashPassword(password), name, role);
         await _userRepository.AddAsync(newUser, cancellationToken);

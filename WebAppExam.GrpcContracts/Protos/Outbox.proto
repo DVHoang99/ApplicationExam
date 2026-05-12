@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option csharp_namespace = "WebAppExam.GrpcContracts.Protos";
+
+service OutboxGrpc {
+  rpc GetOutboxMessage (OutboxMessageRequest) returns (OutboxMessageResponse);
+  rpc UpdateOutboxStatus (UpdateStatusRequest) returns (UpdateStatusResponse);
+}
+
+message OutboxMessageRequest {
+  string id = 1;
+}
+
+message OutboxMessageResponse {
+  string id = 1;
+  string type = 2;
+  string content = 3; // JSON Payload
+}
+
+message UpdateStatusRequest {
+  string id = 1;
+  int32 status = 2; // Matches OutboxMessageStatus enum
+  string error = 3; // Optional error message
+}
+
+message UpdateStatusResponse {
+  bool success = 1;
+}

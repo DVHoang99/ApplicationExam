@@ -16,20 +16,21 @@ using WebAppExam.Infrastructure.Common.Caching;
 using WebAppExam.Infrastructure.Persistence.AppicationDbContext;
 using WebAppExam.Infrastructure.Repositories;
 using WebAppExam.Infrastructure.Services;
-using WebAppExam.API.Common.Kafka;
 using WebAppExam.Application.Products.Services;
-using WebAppExam.Application.Common;
-using WebAppExam.GrpcContracts.Protos;
 using Hangfire.Redis.StackExchange;
 using KafkaFlow.Retry;
-using WebAppExam.Infrastructure.Exceptions;
 using Confluent.Kafka;
 using StackExchange.Redis;
 using ZiggyCreatures.Caching.Fusion;
 using ZiggyCreatures.Caching.Fusion.Backplane.StackExchangeRedis;
-using Microsoft.Extensions.Caching.StackExchangeRedis;
 using ZiggyCreatures.Caching.Fusion.Serialization.NewtonsoftJson;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
+using WebAppExam.GrpcContracts.Protos;
+using WebAppExam.Application.Common;
+using WebAppExam.API.Common.Kafka;
+using WebAppExam.Infrastructure.Exceptions;
 using Npgsql;
+using WebAppExam.Infrastructure.Common.Interceptors;
 
 namespace WebAppExam.Infrastructure;
 
@@ -148,6 +149,7 @@ public static class DependencyInjection
 
         services.AddHangfireServer();
         services.AddScoped<InventoryReconciliationJob, InventoryReconciliationJob>();
+        services.AddScoped<WebAppExam.Infrastructure.Jobs.ProcessOutboxJob>();
 
         // 7. KAFKA CONFIGURATION
         AddKafkaMessaging(services, configuration);
@@ -156,8 +158,19 @@ public static class DependencyInjection
         var grpcServiceHost = configuration[Constants.ConfigKeys.GrpcInventoryService] ?? Constants.ConfigDefaults.LocalGrpc;
         var grpcUri = new Uri(grpcServiceHost);
 
-        services.AddGrpcClient<WarehouseGrpc.WarehouseGrpcClient>(o => o.Address = grpcUri);
-        services.AddGrpcClient<InventoryGrpc.InventoryGrpcClient>(o => o.Address = grpcUri);
+        var outboxGrpcHost = configuration[Constants.ConfigKeys.GrpcOutboxService] ?? Constants.ConfigDefaults.LocalGrpc;
+        var outboxGrpcUri = new Uri(outboxGrpcHost);
+
+        services.AddSingleton<InternalApiKeyInterceptor>();
+
+        services.AddGrpcClient<WarehouseGrpc.WarehouseGrpcClient>(o => o.Address = grpcUri)
+            .AddInterceptor<InternalApiKeyInterceptor>();
+            
+        services.AddGrpcClient<InventoryGrpc.InventoryGrpcClient>(o => o.Address = grpcUri)
+            .AddInterceptor<InternalApiKeyInterceptor>();
+            
+        services.AddGrpcClient<OutboxGrpc.OutboxGrpcClient>(o => o.Address = outboxGrpcUri)
+            .AddInterceptor<InternalApiKeyInterceptor>();
 
         return services;
     }

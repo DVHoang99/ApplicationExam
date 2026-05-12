@@ -88,7 +88,9 @@ public static class Constants
         public const string RedisInboxDb = "Redis:InboxDb";
         public const string RedisHangfireDb = "Redis:HangfireDb";
         public const string GrpcInventoryService = "GrpcService:InventoryService";
+        public const string GrpcOutboxService = "GrpcService:OutboxService";
         public const string InternalInventoryService = "InternalService:InventoryService";
+        public const string InternalApiKeyConfigPath = "InternalSettings:ApiKey";
     }
 
     public static class ConfigDefaults
@@ -104,5 +106,6 @@ public static class Constants
         public const string Accept = "Accept";
         public const string ContentType = "Content-Type";
         public const string ApplicationJson = "application/json";
+        public const string InternalKeyHeader = "X-Internal-Key";
     }
 }

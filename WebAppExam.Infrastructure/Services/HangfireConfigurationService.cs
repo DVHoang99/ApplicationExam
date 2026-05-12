@@ -1,6 +1,7 @@
 using Hangfire;
 using Microsoft.Extensions.Logging;
 using WebAppExam.Application.Services;
+using WebAppExam.Application.OutboxMessages;
 
 namespace WebAppExam.Infrastructure.Services;
 
@@ -11,6 +12,7 @@ public class HangfireConfigurationService : IHangfireConfigurationService
 {
     private readonly IHangfireJobService _hangfireJobService;
     private readonly IRevenueCalculationService _revenueCalculationService;
+    private readonly IOutboxService _outboxService;
     private readonly IBackgroundJobClient _backgroundJobClient;
     private readonly ILogger<HangfireConfigurationService> _logger;
     private const string DashboardUrl = "/hangfire";
@@ -18,11 +20,13 @@ public class HangfireConfigurationService : IHangfireConfigurationService
     public HangfireConfigurationService(
         IHangfireJobService hangfireJobService,
         IRevenueCalculationService revenueCalculationService,
+        IOutboxService outboxService,
         IBackgroundJobClient backgroundJobClient,
         ILogger<HangfireConfigurationService> logger)
     {
         _hangfireJobService = hangfireJobService;
         _revenueCalculationService = revenueCalculationService;
+        _outboxService = outboxService;
         _backgroundJobClient = backgroundJobClient;
         _logger = logger;
     }
@@ -59,6 +63,14 @@ public class HangfireConfigurationService : IHangfireConfigurationService
                 "0 3 * * 0"  // 3:00 AM on Sunday
             );
             _logger.LogInformation("Scheduled recurring job: weekly-revenue-summary on Sunday at 3:00 AM UTC");
+
+            // Process failed/pending outbox messages every minute (Safety net)
+            _hangfireJobService.AddOrUpdateRecurring(
+                "process-outbox-messages",
+                () => _outboxService.ProcessPendingMessagesAsync(cancellationToken),
+                "* * * * *" // Every minute
+            );
+            _logger.LogInformation("Scheduled recurring job: process-outbox-messages every minute");
 
             _logger.LogInformation("Hangfire recurring jobs initialized successfully");
             await Task.CompletedTask;

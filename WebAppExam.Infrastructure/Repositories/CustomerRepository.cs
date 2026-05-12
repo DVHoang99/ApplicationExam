@@ -12,19 +12,9 @@ public class CustomerRepository : Repository<Customer>, ICustomerRepository
     {
     }
 
-    public async Task AddAsync(Customer entity)
+    public IQueryable<Customer> GetCustomerByEmailAsync(string email)
     {
-        await _context.Customers.AddAsync(entity);
-    }
-
-    public async Task<Customer?> GetCustomerByEmailAsync(string email)
-    {
-        return await _context.Customers.FirstOrDefaultAsync(x => x.Email == email && x.DeletedAt == null);
-    }
-
-    public new async Task<List<Customer>> FindAsync(Expression<Func<Customer, bool>> predicate, CancellationToken cancellationToken = default)
-    {
-        return await _context.Customers.Where(predicate).ToListAsync(cancellationToken);
+        return Query().Where(x => x.Email == email && x.DeletedAt == null);
     }
 
     public IQueryable<Customer> GetCustomerByPhoneNumberQuery(IQueryable<Customer> query, string searchTerm)
@@ -42,10 +32,6 @@ public class CustomerRepository : Repository<Customer>, ICustomerRepository
         ));
     }
 
-    public Task<List<Customer>> ToListAsync(IQueryable<Customer> query, CancellationToken cancellationToken = default)
-    {
-        return query.ToListAsync(cancellationToken);
-    }
     public IQueryable<Customer> PaginationQuery(IQueryable<Customer> query, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
     {
         return query.Skip((pageNumber - 1) * pageSize).Take(pageSize);
